@@ -17,7 +17,13 @@ class ConnectionManager:
         if execution_id in self.active_connections:
             await self.active_connections[execution_id].send_json(message)
 
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections.values():
+            await connection.send_json(message)
+
 manager = ConnectionManager()
+
 
 async def emit_event(config: dict, event: dict):
     """

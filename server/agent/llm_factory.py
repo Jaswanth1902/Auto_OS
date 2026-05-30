@@ -18,7 +18,7 @@ from typing import Iterator, Callable, Any
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-logger = logging.getLogger("AutoOS.llm_factory")
+from utils.logger import agent_logger as logger
 
 # ---------------------------------------------------------------------------
 # Key pool — built once at import time from the environment

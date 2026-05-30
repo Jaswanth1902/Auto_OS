@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pyautogui
 
-logger = logging.getLogger("AutoOS.app_module")
+from utils.logger import agent_logger as logger
 
 _SEARCH_ROOTS = [
     Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")),

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger("AutoOS.browser")
+from utils.logger import agent_logger as logger
 
 
 @dataclass

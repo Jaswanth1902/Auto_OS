@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
-logger = logging.getLogger("AutoOS.Voice")
+from utils.logger import api_logger as logger
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 

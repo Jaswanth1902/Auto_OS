@@ -12,7 +12,7 @@ import socket
 import psutil
 import pyautogui
 
-logger = logging.getLogger("AutoOS.visual_module")
+from utils.logger import agent_logger as logger
 
 async def run(task: str, entities: list[str], action_params: dict) -> str:
     action: str = action_params.get("action", "").lower()

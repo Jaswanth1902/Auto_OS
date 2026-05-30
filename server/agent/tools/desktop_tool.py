@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger("AutoOS.desktop")
+from utils.logger import agent_logger as logger
 
 
 async def run_os_task(

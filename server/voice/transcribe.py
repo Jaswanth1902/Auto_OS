@@ -5,10 +5,48 @@ Uses the new google-genai SDK (v1.65+) for multimodal audio transcription.
 Falls back to local faster-whisper if Gemini is unavailable.
 """
 import os
-import base64
-import logging
+import subprocess
+import tempfile
+import uuid
+from utils.logger import api_logger as logger
 
-logger = logging.getLogger("AutoOS.Voice")
+def _preprocess_audio(file_path: str) -> str:
+    """
+    Resamples the audio to 16kHz, 16-bit mono WAV format for Whisper,
+    and checks if the duration exceeds 30 seconds to prevent resource exhaustion.
+    Returns the path to the new pre-processed audio file.
+    """
+    try:
+        # Check duration
+        ffprobe_cmd = [
+            "ffprobe", "-v", "error", "-show_entries",
+            "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file_path
+        ]
+        result = subprocess.run(ffprobe_cmd, capture_output=True, text=True, check=True)
+        duration = float(result.stdout.strip())
+
+        if duration > 30.0:
+            logger.warning(f"Audio file exceeds 30 seconds ({duration}s). Truncating to 30s.")
+            duration_str = "30"
+        else:
+            duration_str = str(duration)
+
+        # Convert to 16kHz mono WAV
+        out_path = os.path.join(tempfile.gettempdir(), f"_voice_proc_{uuid.uuid4().hex}.wav")
+        ffmpeg_cmd = [
+            "ffmpeg", "-y", "-i", file_path,
+            "-t", duration_str,
+            "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le",
+            out_path
+        ]
+        subprocess.run(ffmpeg_cmd, capture_output=True, check=True)
+        return out_path
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to preprocess audio: {e.stderr}")
+        raise RuntimeError("Audio preprocessing failed.")
+    except Exception as e:
+        logger.error(f"Unexpected error during audio preprocessing: {e}")
+        raise RuntimeError("Audio preprocessing failed.")
 
 
 def transcribe_audio(file_path: str) -> str:
@@ -16,15 +54,23 @@ def transcribe_audio(file_path: str) -> str:
     Transcribe an audio file using Gemini Flash.
     Falls back to local faster-whisper if Gemini is unavailable.
     """
-    api_key = os.getenv("GOOGLE_API_KEY", "")
+    # Pre-process the audio before transcription to fix sample rate mismatches and duration crashes
+    processed_path = _preprocess_audio(file_path)
 
-    if api_key:
-        try:
-            return _transcribe_gemini(file_path, api_key)
-        except Exception as e:
-            logger.warning("Gemini transcription failed, falling back to local: %s", e)
+    try:
+        api_key = os.getenv("GOOGLE_API_KEY", "")
 
-    return _transcribe_local(file_path)
+        if api_key:
+            try:
+                return _transcribe_gemini(processed_path, api_key)
+            except Exception as e:
+                logger.warning("Gemini transcription failed, falling back to local: %s", e)
+
+        return _transcribe_local(processed_path)
+    finally:
+        # Cleanup the processed file
+        if os.path.exists(processed_path):
+            os.remove(processed_path)
 
 
 def _transcribe_gemini(file_path: str, api_key: str) -> str:
@@ -38,16 +84,8 @@ def _transcribe_gemini(file_path: str, api_key: str) -> str:
     with open(file_path, "rb") as f:
         audio_data = f.read()
 
-    # Detect mime type
-    ext = os.path.splitext(file_path)[1].lower()
-    mime_map = {
-        ".webm": "audio/webm",
-        ".ogg": "audio/ogg",
-        ".wav": "audio/wav",
-        ".mp3": "audio/mp3",
-        ".m4a": "audio/mp4",
-    }
-    mime = mime_map.get(ext, "audio/webm")
+    # Preprocessed audio is always wav
+    mime = "audio/wav"
 
     # Build the audio part
     audio_part = types.Part.from_bytes(data=audio_data, mime_type=mime)
