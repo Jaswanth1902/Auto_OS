@@ -2,23 +2,31 @@
 security_module.py — Security checks for AutoOS.
 Uses action_params.action from the planner.
 """
+
 from __future__ import annotations
 
 import logging
 import subprocess
+from typing import Any
 
 logger = logging.getLogger("AutoOS.security_module")
 
 
-async def run(task: str, entities: list[str], action_params: dict) -> str:
+async def run(task: str, entities: list[str], action_params: dict[str, Any]) -> str:
     action: str = action_params.get("action", "").lower()
     task_lower = task.lower()
 
-    if action == "virus_scan" or any(w in task_lower for w in ("virus", "malware", "scan", "defender")):
+    if action == "virus_scan" or any(
+        w in task_lower for w in ("virus", "malware", "scan", "defender")
+    ):
         return await _virus_scan()
-    if action == "check_updates" or any(w in task_lower for w in ("update", "windows update", "up to date")):
+    if action == "check_updates" or any(
+        w in task_lower for w in ("update", "windows update", "up to date")
+    ):
         return await _check_updates()
-    if action == "lock_settings" or any(w in task_lower for w in ("lock", "pin", "password")):
+    if action == "lock_settings" or any(
+        w in task_lower for w in ("lock", "pin", "password")
+    ):
         return await _lock_settings()
 
     return await _security_overview()

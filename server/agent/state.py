@@ -1,10 +1,11 @@
-from typing import Annotated, TypedDict, List, Optional
+from typing import Annotated, List, Optional, TypedDict
+
 from langgraph.graph.message import add_messages
 
 
 class AgentState(TypedDict):
     # ── Core conversation ────────────────────────────────────────────────────
-    messages: Annotated[List[dict], add_messages]
+    messages: Annotated[List[dict[str, str]], add_messages]
     task: str
 
     # ── Planner output — rich classification ─────────────────────────────────
@@ -15,7 +16,7 @@ class AgentState(TypedDict):
     # Key nouns the planner extracted (app names, file types, settings, …)
     entities: List[str]
     # Structured parameters extracted by the planner for the executor
-    action_params: dict
+    action_params: dict[str, str]
     # One plain-English sentence describing what will happen
     plain_english_plan: str
     # 0.0–1.0 planner confidence; below 0.5 → HITL
@@ -25,7 +26,7 @@ class AgentState(TypedDict):
 
     # ── Runtime options (passed from the frontend POST body) ─────────────────
     headless: Optional[bool]
-    input_values: Optional[dict]
+    input_values: Optional[dict[str, str]]
     max_steps: Optional[int]
 
     # ── Final result ─────────────────────────────────────────────────────────

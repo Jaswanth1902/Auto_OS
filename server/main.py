@@ -111,11 +111,14 @@ async def websocket_endpoint(websocket: WebSocket, execution_id: str):
 async def _run_agent_task(execution_id: str, task_text: str, params: dict | None = None):
     """Run the LangGraph agent as a cancellable asyncio task."""
     try:
+        from agent.fast_track_rules import get_fast_track_category
+        fast_cat = get_fast_track_category(task_text)
+
         initial_state = {
             "task": task_text,
             "messages": [],
-            "next_action": "",
-            "sub_category": "",
+            "next_action": fast_cat if fast_cat else "",
+            "sub_category": "fast_tracked" if fast_cat else "",
             "entities": [],
             "action_params": {},
             "plain_english_plan": "",

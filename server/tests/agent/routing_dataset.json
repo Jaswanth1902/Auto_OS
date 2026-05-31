@@ -1,0 +1,32 @@
+[
+  {
+    "task": "Play the latest video from MrBeast on YouTube",
+    "expected_category": "browser",
+    "expected_sub_category": "fast_tracked",
+    "fast_tracked": true
+  },
+  {
+    "task": "Open calculator",
+    "expected_category": "os",
+    "expected_sub_category": "fast_tracked",
+    "fast_tracked": true
+  },
+  {
+    "task": "Search for news about spacex",
+    "expected_category": "browser",
+    "expected_sub_category": "web_search",
+    "fast_tracked": false
+  },
+  {
+    "task": "Launch Microsoft Word and create a new document",
+    "expected_category": "os",
+    "expected_sub_category": "app_launch",
+    "fast_tracked": false
+  },
+  {
+    "task": "Turn up the volume",
+    "expected_category": "os",
+    "expected_sub_category": "settings",
+    "fast_tracked": false
+  }
+]

@@ -2,25 +2,33 @@
 hardware_module.py — Hardware detection and troubleshooting for AutoOS.
 Uses action_params.device_type from the planner for precise dispatch.
 """
+
 from __future__ import annotations
-import os
+
 import asyncio
 import logging
+import os
 import subprocess
+from typing import Any
 
 logger = logging.getLogger("AutoOS.hardware_module")
 
 
-async def run(task: str, entities: list[str], action_params: dict) -> str:
+async def run(task: str, entities: list[str], action_params: dict[str, Any]) -> str:
     device_type: str = action_params.get("device_type", "").lower()
 
     # Use structured device_type first, fallback to keyword scan
     if device_type in ("usb", "pendrive", "flash_drive", "storage"):
         return await _check_usb()
     if device_type in ("wifi", "wi-fi", "network", "internet"):
-        if any(w in task.lower() for w in ("available", "nearby", "list", "scan", "show")):
+        if any(
+            w in task.lower() for w in ("available", "nearby", "list", "scan", "show")
+        ):
             return await _get_available_wifi_networks()
-        if any(w in task.lower() for w in ("toggle", "turn", "on", "off", "switch", "open", "settings")):
+        if any(
+            w in task.lower()
+            for w in ("toggle", "turn", "on", "off", "switch", "open", "settings")
+        ):
             return await _open_wifi_settings()
         return await _fix_wifi(task.lower())
     if device_type in ("printer", "print"):
@@ -28,7 +36,11 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
     if device_type in ("sound", "audio", "speaker", "microphone"):
         return await _run_troubleshooter("audio")
     if device_type in ("bluetooth",):
-        if "toggle" in task.lower() or "turn" in task.lower() or "switch" in task.lower():
+        if (
+            "toggle" in task.lower()
+            or "turn" in task.lower()
+            or "switch" in task.lower()
+        ):
             return await _open_bluetooth_settings()
         return await _check_bluetooth()
 
@@ -38,9 +50,13 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
         return await _check_usb()
     if any(w in task_lower for w in ("wifi", "wi-fi", "internet", "network")):
         import re
-        if re.search(r'\b(available|nearby|list|scan|show)\b', task_lower):
+
+        if re.search(r"\b(available|nearby|list|scan|show)\b", task_lower):
             return await _get_available_wifi_networks()
-        if re.search(r'\b(toggle|turn\s*on|turn\s*off|switch\s*on|switch\s*off|open\s*settings)\b', task_lower):
+        if re.search(
+            r"\b(toggle|turn\s*on|turn\s*off|switch\s*on|switch\s*off|open\s*settings)\b",
+            task_lower,
+        ):
             return await _open_wifi_settings()
         return await _fix_wifi(task_lower)
     if any(w in task_lower for w in ("printer", "print")):
@@ -58,12 +74,15 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
 async def _check_usb() -> str:
     try:
         import psutil
+
         partitions = await asyncio.to_thread(psutil.disk_partitions, all=True)
         usb_drives = [
-            p for p in partitions
-            if "removable" in p.opts.lower() or p.fstype.lower() in ("fat32", "exfat", "fat")
+            p
+            for p in partitions
+            if "removable" in p.opts.lower()
+            or p.fstype.lower() in ("fat32", "exfat", "fat")
         ]
-        
+
         # Open storage settings for the user
         try:
             await asyncio.to_thread(os.startfile, "ms-settings:storagesense")
@@ -79,14 +98,14 @@ async def _check_usb() -> str:
         for p in usb_drives:
             try:
                 usage = await asyncio.to_thread(psutil.disk_usage, p.mountpoint)
-                gb_free = usage.free / (1024 ** 3)
-                gb_total = usage.total / (1024 ** 3)
+                gb_free = usage.free / (1024**3)
+                gb_total = usage.total / (1024**3)
                 lines.append(
                     f"  Drive {p.mountpoint} — {gb_free:.1f} GB free of {gb_total:.1f} GB  ({p.fstype})"
                 )
             except Exception:
                 lines.append(f"  Drive {p.mountpoint} ({p.fstype})")
-        
+
         lines.append("\nI have also opened your Storage settings for you.")
         return "\n".join(lines)
     except Exception as exc:
@@ -97,16 +116,24 @@ async def _fix_wifi(task_lower: str) -> str:
     try:
         result = subprocess.run(
             ["netsh", "wlan", "show", "interfaces"],
-            capture_output=True, text=True, timeout=10
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         output = result.stdout
 
         if "disconnected" in output.lower() or not output.strip():
             # Only run non-privileged commands; privileged resets require admin
-            flush_result = subprocess.run(["ipconfig", "/flushdns"], capture_output=True, timeout=10)
-            release_result = subprocess.run(["ipconfig", "/release"], capture_output=True, timeout=10)
-            renew_result = subprocess.run(["ipconfig", "/renew"], capture_output=True, timeout=20)
-            
+            flush_result = subprocess.run(
+                ["ipconfig", "/flushdns"], capture_output=True, timeout=10
+            )
+            release_result = subprocess.run(
+                ["ipconfig", "/release"], capture_output=True, timeout=10
+            )
+            renew_result = subprocess.run(
+                ["ipconfig", "/renew"], capture_output=True, timeout=20
+            )
+
             if flush_result.returncode == 0:
                 return (
                     "Your Wi-Fi appeared disconnected. I flushed the DNS cache and renewed your IP.\n"
@@ -116,8 +143,10 @@ async def _fix_wifi(task_lower: str) -> str:
             return (
                 "Your Wi-Fi appears disconnected but I couldn't reset the network.\n"
                 "Try restarting your Wi-Fi adapter or running this application as administrator."
-            )                )
-            subprocess.run(["netsh", "int", "ip", "reset"], capture_output=True, timeout=15)
+            )
+            subprocess.run(
+                ["netsh", "int", "ip", "reset"], capture_output=True, timeout=15
+            )
             subprocess.run(["ipconfig", "/release"], capture_output=True, timeout=10)
             subprocess.run(["ipconfig", "/renew"], capture_output=True, timeout=20)
             subprocess.run(["ipconfig", "/flushdns"], capture_output=True, timeout=10)
@@ -127,7 +156,9 @@ async def _fix_wifi(task_lower: str) -> str:
                 "You may need to reconnect to your Wi-Fi network."
             )
 
-        ssid_line = next((l for l in output.splitlines() if "SSID" in l and "BSSID" not in l), None)
+        ssid_line = next(
+            (l for l in output.splitlines() if "SSID" in l and "BSSID" not in l), None
+        )
         signal_line = next((l for l in output.splitlines() if "Signal" in l), None)
         ssid = ssid_line.split(":", 1)[-1].strip() if ssid_line else "Unknown"
         signal = signal_line.split(":", 1)[-1].strip() if signal_line else "Unknown"
@@ -141,15 +172,19 @@ async def _fix_wifi(task_lower: str) -> str:
     except Exception as exc:
         return f"Could not check Wi-Fi status: {exc}"
 
+
 async def _check_printer() -> str:
     try:
         result = await asyncio.to_thread(
             subprocess.run,
             [
-                "powershell", "-Command",
-                "Get-Printer | Select-Object Name,PrinterStatus | ConvertTo-Json"
+                "powershell",
+                "-Command",
+                "Get-Printer | Select-Object Name,PrinterStatus | ConvertTo-Json",
             ],
-            capture_output=True, text=True, timeout=15
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if result.returncode != 0 or not result.stdout.strip():
             return (
@@ -157,19 +192,29 @@ async def _check_printer() -> str:
                 "Make sure the printer is turned on and connected, then ask me again."
             )
         import json
+
         printers = json.loads(result.stdout)
         if isinstance(printers, dict):
             printers = [printers]
         lines = [f"Found {len(printers)} printer(s):\n"]
-        
+
         status_map = {
-            0: "Paused", 1: "Error", 2: "PendingDeletion", 3: "Ready",
-            4: "PaperJam", 5: "PaperOut", 6: "ManualFeed"
+            0: "Paused",
+            1: "Error",
+            2: "PendingDeletion",
+            3: "Ready",
+            4: "PaperJam",
+            5: "PaperOut",
+            6: "ManualFeed",
         }
-        
+
         for p in printers:
             status = p.get("PrinterStatus")
-            status_text = status_map.get(status, f"Status code: {status}") if status is not None else "Unknown"
+            status_text = (
+                status_map.get(status, f"Status code: {status}")
+                if status is not None
+                else "Unknown"
+            )
             lines.append(f"  {p.get('Name', 'Unknown')} — {status_text}")
         return "\n".join(lines)
     except Exception as exc:
@@ -181,12 +226,15 @@ async def _check_bluetooth() -> str:
         result = await asyncio.to_thread(
             subprocess.run,
             [
-                "powershell", "-Command",
-                "Get-PnpDevice -Class Bluetooth | Select-Object FriendlyName,Status | ConvertTo-Json"
+                "powershell",
+                "-Command",
+                "Get-PnpDevice -Class Bluetooth | Select-Object FriendlyName,Status | ConvertTo-Json",
             ],
-            capture_output=True, text=True, timeout=15
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
-        
+
         # Open Bluetooth settings for the user
         try:
             await asyncio.to_thread(os.startfile, "ms-settings:bluetooth")
@@ -196,13 +244,16 @@ async def _check_bluetooth() -> str:
         if result.returncode != 0 or not result.stdout.strip():
             return "No Bluetooth devices found. Make sure Bluetooth is turned on."
         import json
+
         devices = json.loads(result.stdout)
         if isinstance(devices, dict):
             devices = [devices]
         lines = [f"Found {len(devices)} Bluetooth device(s):\n"]
         for d in devices:
-            lines.append(f"  {d.get('FriendlyName', 'Unknown')} — {d.get('Status', 'Unknown')}")
-        
+            lines.append(
+                f"  {d.get('FriendlyName', 'Unknown')} — {d.get('Status', 'Unknown')}"
+            )
+
         lines.append("\nI have also opened your Bluetooth settings for you.")
         return "\n".join(lines)
     except Exception as exc:
@@ -213,27 +264,29 @@ async def _get_available_wifi_networks() -> str:
     try:
         # Open settings first for the user
         os.startfile("ms-settings:network-wifi")
-        
+
         # Scan for networks
         result = subprocess.run(
             ["netsh", "wlan", "show", "networks"],
-            capture_output=True, text=True, timeout=10
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         output = result.stdout
-        
+
         networks = []
         for line in output.splitlines():
             if "SSID" in line and ":" in line:
                 ssid = line.split(":", 1)[1].strip()
                 if ssid:
                     networks.append(ssid)
-        
+
         if not networks:
             return (
                 "I couldn't find any available Wi-Fi networks in range.\n"
                 "I have opened your Wi-Fi settings so you can check if your Wi-Fi adapter is turned on."
             )
-        
+
         msg = "I found the following Wi-Fi networks nearby:\n\n"
         msg += "\n".join([f"• {n}" for n in networks])
         msg += "\n\nI have also opened your Wi-Fi settings for you to connect."
@@ -262,12 +315,13 @@ async def _open_bluetooth_settings() -> str:
 
 async def _run_troubleshooter(category: str) -> str:
     troubleshooter_ids = {
-        "audio":    "msdt.exe -id AudioPlaybackDiagnostic",
+        "audio": "msdt.exe -id AudioPlaybackDiagnostic",
         "internet": "msdt.exe -id NetworkDiagnosticsWeb",
-        "printer":  "msdt.exe -id PrinterDiagnostic",
-        "devices":  "msdt.exe -id DeviceDiagnostic",
+        "printer": "msdt.exe -id PrinterDiagnostic",
+        "devices": "msdt.exe -id DeviceDiagnostic",
     }
     import shlex
+
     cmd = troubleshooter_ids.get(category, "msdt.exe -id DeviceDiagnostic")
     args = shlex.split(cmd)
     try:

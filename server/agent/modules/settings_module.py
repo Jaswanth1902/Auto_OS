@@ -2,16 +2,19 @@
 settings_module.py — System settings control for AutoOS.
 Uses action_params.setting and action_params.direction from the planner.
 """
+
 from __future__ import annotations
-import os
+
 import asyncio
 import logging
+import os
 import subprocess
+from typing import Any
 
 logger = logging.getLogger("AutoOS.settings_module")
 
 
-async def run(task: str, entities: list[str], action_params: dict) -> str:
+async def run(task: str, entities: list[str], action_params: dict[str, Any]) -> str:
     setting: str = action_params.get("setting", "").lower()
     direction: str = action_params.get("direction", "").lower()
     task_lower = task.lower()
@@ -40,7 +43,10 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
         return await _toggle_night_light()
 
     # Fallback to keyword scan
-    if any(w in task_lower for w in ("font", "text", "bigger", "larger", "size", "small", "zoom")):
+    if any(
+        w in task_lower
+        for w in ("font", "text", "bigger", "larger", "size", "small", "zoom")
+    ):
         return await _change_text_size(direction or task_lower)
     if any(w in task_lower for w in ("brightness", "dim", "bright")):
         return await _change_brightness(direction or task_lower)
@@ -56,7 +62,9 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
         return await _open_accessibility()
     if any(w in task_lower for w in ("airplane", "flight mode")):
         return await _toggle_airplane_mode()
-    if any(w in task_lower for w in ("power", "battery", "performance", "energy", "save")):
+    if any(
+        w in task_lower for w in ("power", "battery", "performance", "energy", "save")
+    ):
         return await _set_power_mode(task_lower)
     if any(w in task_lower for w in ("night light", "blue light", "warmth")):
         return await _toggle_night_light()
@@ -67,7 +75,21 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
 async def _change_text_size(direction: str) -> str:
     os.startfile("ms-settings:easeofaccess-display")
     await asyncio.sleep(0.5)
-    verb = "increase" if any(w in direction for w in ("increase", "bigger", "larger", "more", "up", "boost")) else "decrease" if any(w in direction for w in ("decrease", "smaller", "less", "reduce", "down")) else "adjust"
+    verb = (
+        "increase"
+        if any(
+            w in direction
+            for w in ("increase", "bigger", "larger", "more", "up", "boost")
+        )
+        else (
+            "decrease"
+            if any(
+                w in direction
+                for w in ("decrease", "smaller", "less", "reduce", "down")
+            )
+            else "adjust"
+        )
+    )
     return (
         f"I opened the Text Size settings for you.\n"
         f"Use the slider to {verb} the text size, then click Apply."
@@ -78,27 +100,39 @@ async def _change_brightness(direction: str) -> str:
     try:
         get_result = subprocess.run(
             [
-                "powershell", "-Command",
-                "(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness).CurrentBrightness"
+                "powershell",
+                "-Command",
+                "(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness).CurrentBrightness",
             ],
-            capture_output=True, text=True, timeout=10
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        current = int(get_result.stdout.strip()) if get_result.stdout.strip().isdigit() else 50
+        current = (
+            int(get_result.stdout.strip())
+            if get_result.stdout.strip().isdigit()
+            else 50
+        )
 
         if any(w in direction for w in ("increase", "bright", "more", "up", "higher")):
             new_val = min(100, current + 20)
-        elif any(w in direction for w in ("decrease", "dim", "less", "down", "lower", "reduce")):
+        elif any(
+            w in direction
+            for w in ("decrease", "dim", "less", "down", "lower", "reduce")
+        ):
             new_val = max(10, current - 20)
         else:
             new_val = 70
 
         subprocess.run(
             [
-                "powershell", "-Command",
+                "powershell",
+                "-Command",
                 f"(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods)"
-                f".WmiSetBrightness(1, {new_val})"
+                f".WmiSetBrightness(1, {new_val})",
             ],
-            capture_output=True, timeout=10
+            capture_output=True,
+            timeout=10,
         )
         return f"Screen brightness set to {new_val}%."
     except Exception:
@@ -108,14 +142,25 @@ async def _change_brightness(direction: str) -> str:
 
 async def _toggle_dark_mode() -> str:
     try:
-        for value_name, value in [("AppsUseLightTheme", 0), ("SystemUsesLightTheme", 0)]:
+        for value_name, value in [
+            ("AppsUseLightTheme", 0),
+            ("SystemUsesLightTheme", 0),
+        ]:
             subprocess.run(
                 [
-                    "reg", "add",
+                    "reg",
+                    "add",
                     r"HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-                    "/v", value_name, "/t", "REG_DWORD", "/d", str(value), "/f"
+                    "/v",
+                    value_name,
+                    "/t",
+                    "REG_DWORD",
+                    "/d",
+                    str(value),
+                    "/f",
                 ],
-                capture_output=True, timeout=10
+                capture_output=True,
+                timeout=10,
             )
         return "Dark mode has been turned on. You may need to sign out and back in for all apps to update."
     except Exception:
@@ -125,7 +170,9 @@ async def _toggle_dark_mode() -> str:
 
 async def _toggle_high_contrast() -> str:
     os.startfile("ms-settings:easeofaccess-highcontrast")
-    return "I opened High Contrast settings. You can turn it on or choose a theme there."
+    return (
+        "I opened High Contrast settings. You can turn it on or choose a theme there."
+    )
 
 
 async def _open_magnifier() -> str:
@@ -167,10 +214,10 @@ async def _set_power_mode(mode_query: str) -> str:
         "performance": "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c",
         "power_saver": "a1841308-3541-4fab-bc81-f71556f20b4a",
     }
-    
+
     target_guid = None
     mode_name = "Balanced"
-    
+
     mq = mode_query.lower()
     if any(w in mq for w in ("high", "performance", "fast", "gaming", "max")):
         target_guid = schemes["performance"]
@@ -186,7 +233,9 @@ async def _set_power_mode(mode_query: str) -> str:
         try:
             result = subprocess.run(
                 ["powercfg", "/setactive", target_guid],
-                capture_output=True, text=True, timeout=10
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode == 0:
                 return f"I have switched your power plan to '{mode_name}'."
@@ -197,7 +246,7 @@ async def _set_power_mode(mode_query: str) -> str:
         except Exception:
             os.startfile("ms-settings:powersleep")
             return f"I opened the Power & Sleep settings where you can adjust your performance and energy saving preferences."
-    
+
     os.startfile("ms-settings:powersleep")
     return "I opened the Power & Sleep settings for you."
 

@@ -2,6 +2,7 @@
 router.py — Routes the graph to the correct executor based on the planner's
 sub_category, category, confidence, and needs_hitl flag.
 """
+
 from __future__ import annotations
 
 import logging
@@ -39,7 +40,10 @@ def router(state: AgentState) -> str:
 
     logger.debug(
         "Router: sub=%s category=%s confidence=%.2f hitl=%s",
-        sub, category, confidence, needs_hitl,
+        sub,
+        category,
+        confidence,
+        needs_hitl,
     )
 
     # Sub-category is the primary signal ─────────────────────────────────────

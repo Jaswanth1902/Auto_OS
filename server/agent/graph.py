@@ -1,9 +1,11 @@
-from langgraph.graph import StateGraph, END
-from agent.state import AgentState
+from agent.nodes.executor import (browser_executor, os_executor,
+                                  reasoning_executor)
+from agent.nodes.memory import memory_consolidator
 from agent.nodes.planner import planner
 from agent.nodes.router import router
-from agent.nodes.executor import browser_executor, os_executor, reasoning_executor
-from agent.nodes.memory import memory_consolidator
+from agent.state import AgentState
+from langgraph.graph import END, StateGraph
+
 
 def create_graph():
     workflow = StateGraph(AgentState)
@@ -26,8 +28,8 @@ def create_graph():
             "browser_executor": "browser_executor",
             "os_executor": "os_executor",
             "reasoning_executor": "reasoning_executor",
-            "end": "memory_consolidator"
-        }
+            "end": "memory_consolidator",
+        },
     )
 
     # Transitions to Memory then END
@@ -37,6 +39,7 @@ def create_graph():
     workflow.add_edge("memory_consolidator", END)
 
     return workflow.compile()
+
 
 # Singleton instance
 app_graph = create_graph()

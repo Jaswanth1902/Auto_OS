@@ -1,5 +1,7 @@
 from typing import Dict
+
 from fastapi import WebSocket
+
 
 class ConnectionManager:
     def __init__(self):
@@ -17,7 +19,9 @@ class ConnectionManager:
         if execution_id in self.active_connections:
             await self.active_connections[execution_id].send_json(message)
 
+
 manager = ConnectionManager()
+
 
 async def emit_event(config: dict, event: dict):
     """

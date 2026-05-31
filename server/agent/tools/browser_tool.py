@@ -36,27 +36,48 @@ class BrowserAutomationRunner:
         max_actions_per_step: int | None = None,
         max_failures: int | None = None,
     ) -> None:
-        self.headless = _env_bool("BROWSER_HEADLESS", default=False) if headless is None else headless
+        self.headless = (
+            _env_bool("BROWSER_HEADLESS", default=False)
+            if headless is None
+            else headless
+        )
         self.llm_model = llm_model or os.getenv("LLM_MODEL", "gemini-1.5-flash")
         self.page_extraction_model = page_extraction_model or os.getenv(
             "BROWSER_PAGE_EXTRACTION_MODEL",
             "gemini-1.5-flash",
         )
-        self.use_cloud = _env_bool("BROWSER_USE_CLOUD", default=False) if use_cloud is None else use_cloud
-        self.max_actions_per_step = max_actions_per_step or int(os.getenv("BROWSER_MAX_ACTIONS_PER_STEP", "3"))
+        self.use_cloud = (
+            _env_bool("BROWSER_USE_CLOUD", default=False)
+            if use_cloud is None
+            else use_cloud
+        )
+        self.max_actions_per_step = max_actions_per_step or int(
+            os.getenv("BROWSER_MAX_ACTIONS_PER_STEP", "3")
+        )
         self.max_failures = max_failures or int(os.getenv("BROWSER_MAX_FAILURES", "2"))
 
     def _create_llm(self):
         try:
             from browser_use import ChatBrowserUse, ChatGoogle
         except ImportError as exc:
-            raise RuntimeError("browser-use is not installed. Run `uv sync` in the server folder.") from exc
+            raise RuntimeError(
+                "browser-use is not installed. Run `uv sync` in the server folder."
+            ) from exc
 
         browser_use_key = os.getenv("BROWSER_USE_API_KEY")
-        if browser_use_key and os.getenv("BROWSER_LLM_PROVIDER", "").lower() in {"", "browser-use", "browser_use"}:
-            return ChatBrowserUse(model=os.getenv("BROWSER_USE_MODEL", "bu-latest"), api_key=browser_use_key)
+        if browser_use_key and os.getenv("BROWSER_LLM_PROVIDER", "").lower() in {
+            "",
+            "browser-use",
+            "browser_use",
+        }:
+            return ChatBrowserUse(
+                model=os.getenv("BROWSER_USE_MODEL", "bu-latest"),
+                api_key=browser_use_key,
+            )
 
-        google_api_key = os.getenv("GOOGLE_API_KEY") or _first_csv_value(os.getenv("LLM_API_KEYS"))
+        google_api_key = os.getenv("GOOGLE_API_KEY") or _first_csv_value(
+            os.getenv("LLM_API_KEYS")
+        )
         if not google_api_key:
             raise RuntimeError(
                 "Set BROWSER_USE_API_KEY for ChatBrowserUse or GOOGLE_API_KEY for Gemini browser automation."
@@ -69,7 +90,9 @@ class BrowserAutomationRunner:
         if not self.page_extraction_model:
             return None
 
-        google_api_key = os.getenv("GOOGLE_API_KEY") or _first_csv_value(os.getenv("LLM_API_KEYS"))
+        google_api_key = os.getenv("GOOGLE_API_KEY") or _first_csv_value(
+            os.getenv("LLM_API_KEYS")
+        )
         if not google_api_key:
             return None
 
@@ -81,12 +104,16 @@ class BrowserAutomationRunner:
         try:
             from browser_use import Browser
         except ImportError as exc:
-            raise RuntimeError("browser-use is not installed. Run `uv sync` in the server folder.") from exc
+            raise RuntimeError(
+                "browser-use is not installed. Run `uv sync` in the server folder."
+            ) from exc
 
         if self.use_cloud:
             return Browser(use_cloud=True, headless=self.headless)
 
-        executable_path = os.getenv("BROWSER_EXECUTABLE_PATH") or _find_chromium_executable()
+        executable_path = (
+            os.getenv("BROWSER_EXECUTABLE_PATH") or _find_chromium_executable()
+        )
         if executable_path:
             logger.info("Using browser executable at %s", executable_path)
             return Browser(
@@ -95,7 +122,9 @@ class BrowserAutomationRunner:
                 keep_alive=_env_bool("BROWSER_KEEP_ALIVE", default=True),
             )
 
-        logger.info("No system Chrome/Chromium found; browser-use will use its default browser.")
+        logger.info(
+            "No system Chrome/Chromium found; browser-use will use its default browser."
+        )
         return Browser(
             headless=self.headless,
             keep_alive=_env_bool("BROWSER_KEEP_ALIVE", default=True),
@@ -109,12 +138,16 @@ class BrowserAutomationRunner:
         max_steps: int | None = None,
     ) -> BrowserTaskResult:
         if not task.strip():
-            return BrowserTaskResult(success=False, task=task, error="No browser task provided")
+            return BrowserTaskResult(
+                success=False, task=task, error="No browser task provided"
+            )
 
         try:
             from browser_use import Agent, Tools
         except ImportError as exc:
-            raise RuntimeError("browser-use is not installed. Run `uv sync` in the server folder.") from exc
+            raise RuntimeError(
+                "browser-use is not installed. Run `uv sync` in the server folder."
+            ) from exc
 
         try:
             enhanced_task = _inject_sensitive_data_instructions(task, sensitive_data)
@@ -137,7 +170,9 @@ class BrowserAutomationRunner:
             )
 
             logger.info("Starting browser task: %s", task[:120])
-            history = await agent.run(max_steps=max_steps or int(os.getenv("BROWSER_MAX_STEPS", "100")))
+            history = await agent.run(
+                max_steps=max_steps or int(os.getenv("BROWSER_MAX_STEPS", "100"))
+            )
             final_result = _extract_final_result(history)
             return BrowserTaskResult(
                 success=True,
@@ -158,7 +193,9 @@ async def run_browser_task(
     max_steps: int | None = None,
 ) -> str:
     runner = BrowserAutomationRunner(headless=headless)
-    result = await runner.run_task(task, sensitive_data=input_values, max_steps=max_steps)
+    result = await runner.run_task(
+        task, sensitive_data=input_values, max_steps=max_steps
+    )
     return result.as_text()
 
 
@@ -179,7 +216,9 @@ def _extract_final_result(history: Any) -> str:
     return str(history) if history is not None else ""
 
 
-def _inject_sensitive_data_instructions(task: str, sensitive_data: dict[str, str] | None) -> str:
+def _inject_sensitive_data_instructions(
+    task: str, sensitive_data: dict[str, str] | None
+) -> str:
     if not sensitive_data:
         return task
 
@@ -209,10 +248,16 @@ def _find_chromium_executable() -> str | None:
     if system_name == "Windows":
         local_app = os.environ.get("LOCALAPPDATA", "")
         program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
-        program_files_x86 = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
+        program_files_x86 = os.environ.get(
+            "PROGRAMFILES(X86)", r"C:\Program Files (x86)"
+        )
         candidates = [
             Path(program_files) / "Google" / "Chrome" / "Application" / "chrome.exe",
-            Path(program_files_x86) / "Google" / "Chrome" / "Application" / "chrome.exe",
+            Path(program_files_x86)
+            / "Google"
+            / "Chrome"
+            / "Application"
+            / "chrome.exe",
             Path(local_app) / "Google" / "Chrome" / "Application" / "chrome.exe",
         ]
         for candidate in candidates:
@@ -220,7 +265,12 @@ def _find_chromium_executable() -> str | None:
                 return str(candidate)
         return None
 
-    for name in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"):
+    for name in (
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser",
+    ):
         executable = shutil.which(name)
         if executable:
             return executable

@@ -4,32 +4,45 @@ planner.py — Rich intent classification for AutoOS Gateway.
 Returns a fully structured TaskPlan so executors receive zero-ambiguity
 parameters — no raw string parsing happens downstream.
 """
+
 from __future__ import annotations
 
 import logging
 from typing import Any, Literal
 
-from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field
-
 from agent.bus import emit_event
 from agent.llm_factory import get_llm, invoke_with_fallback
 from agent.state import AgentState
+from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field  # type: ignore
 
 logger = logging.getLogger("AutoOS.planner")
 
 
 # ── Structured output schema ──────────────────────────────────────────────────
 
+
 class TaskPlan(BaseModel):
     category: Literal["browser", "os", "reasoning", "ambiguous"] = Field(
         description="Top-level route: 'browser' needs the web, 'os' is local, 'reasoning' is for math/logic/knowledge."
     )
     sub_category: Literal[
-        "web_search", "web_form", "media_playback", "gov_portal",
-        "file_ops", "app_launch", "hardware", "settings",
-        "process_mgmt", "security", "diagnostics", "vision", "app_control", 
-        "knowledge", "math", "unknown",
+        "web_search",
+        "web_form",
+        "media_playback",
+        "gov_portal",
+        "file_ops",
+        "app_launch",
+        "hardware",
+        "settings",
+        "process_mgmt",
+        "security",
+        "diagnostics",
+        "vision",
+        "app_control",
+        "knowledge",
+        "math",
+        "unknown",
     ] = Field(description="The specific intent within the chosen category.")
     plain_english_plan: str = Field(
         description=(
@@ -44,7 +57,7 @@ class TaskPlan(BaseModel):
             "website, setting name, device type. Keep entries short and exact."
         ),
     )
-    action_params: dict = Field(
+    action_params: dict[str, Any] = Field(
         default_factory=dict,
         description=(
             "Structured parameters for the executor. The schema depends on sub_category:\n"
@@ -71,7 +84,8 @@ class TaskPlan(BaseModel):
         ),
     )
     confidence: float = Field(
-        ge=0.0, le=1.0,
+        ge=0.0,
+        le=1.0,
         description="Confidence in this classification (0.0-1.0).",
     )
 
@@ -152,6 +166,7 @@ STRICT RULES
 
 # ── Planner node ──────────────────────────────────────────────────────────────
 
+
 async def planner(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
     """
     Classifies the user task into a rich TaskPlan and stores it in AgentState.
@@ -171,7 +186,7 @@ async def planner(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
 
     llm = get_llm(temperature=0.0)
     structured_llm = llm.with_structured_output(TaskPlan)
-    
+
     # Inject persistent context for chaining
     ctx = state.get("context", {})
     ctx_str = f"\n\nCURRENT CONTEXT: {ctx}" if ctx else ""
@@ -181,17 +196,23 @@ async def planner(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
     plan: TaskPlan = await invoke_with_fallback(structured_llm, prompt)
     logger.info(
         "Plan → category=%s sub=%s params=%s hitl=%s",
-        plan.category, plan.sub_category, plan.action_params, plan.needs_hitl,
+        plan.category,
+        plan.sub_category,
+        plan.action_params,
+        plan.needs_hitl,
     )
 
-    await emit_event(config, {
-        "type": "classification",
-        "category": plan.category,
-        "sub_category": plan.sub_category,
-        "plain_english_plan": plan.plain_english_plan,
-        "confidence": plan.confidence,
-        "needs_hitl": plan.needs_hitl,
-    })
+    await emit_event(
+        config,
+        {
+            "type": "classification",
+            "category": plan.category,
+            "sub_category": plan.sub_category,
+            "plain_english_plan": plan.plain_english_plan,
+            "confidence": plan.confidence,
+            "needs_hitl": plan.needs_hitl,
+        },
+    )
 
     return {
         "next_action": plan.category,
@@ -201,11 +222,13 @@ async def planner(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
         "plain_english_plan": plan.plain_english_plan,
         "confidence": plan.confidence,
         "needs_hitl": plan.needs_hitl,
-        "messages": [{
-            "role": "assistant",
-            "content": (
-                f"[Planner] {plan.category}/{plan.sub_category} — "
-                f"{plan.plain_english_plan}"
-            ),
-        }],
+        "messages": [
+            {
+                "role": "assistant",
+                "content": (
+                    f"[Planner] {plan.category}/{plan.sub_category} — "
+                    f"{plan.plain_english_plan}"
+                ),
+            }
+        ],
     }

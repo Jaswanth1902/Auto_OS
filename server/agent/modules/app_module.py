@@ -10,12 +10,15 @@ Strategy (in priority order):
   4. Shell Execute with the clean app name / URI scheme
   5. Clipboard-paste into Start Menu (avoids typewrite char-by-char bug)
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
 import subprocess
+from typing import Any
+
 try:
     import winreg
 except ImportError:
@@ -29,15 +32,20 @@ logger = logging.getLogger("AutoOS.app_module")
 _SEARCH_ROOTS = [
     Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")),
     Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")),
-    Path(os.environ.get("LOCALAPPDATA") or r"C:\Users\Default\AppData\Local") / "Programs",
-    Path(os.environ.get("APPDATA") or r"C:\Users\Default\AppData\Roaming") / "Microsoft" / "Windows" / "Start Menu" / "Programs",
+    Path(os.environ.get("LOCALAPPDATA") or r"C:\Users\Default\AppData\Local")
+    / "Programs",
+    Path(os.environ.get("APPDATA") or r"C:\Users\Default\AppData\Roaming")
+    / "Microsoft"
+    / "Windows"
+    / "Start Menu"
+    / "Programs",
     Path(r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs"),
     Path(os.path.expanduser("~")) / "Desktop",
     Path(os.path.expanduser("~")) / "AppData" / "Local",
 ]
 
 
-async def run(task: str, entities: list[str], action_params: dict) -> str:
+async def run(task: str, entities: list[str], action_params: dict[str, Any]) -> str:
     # Prefer structured params from the planner
     app_name: str = action_params.get("app_name") or (entities[0] if entities else task)
     aliases: list[str] = action_params.get("search_aliases") or [app_name]
@@ -60,11 +68,11 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
         result = await strategy()
         if result["success"]:
             logger.info("Launch succeeded via %s", result.get("method", "unknown"))
-            
+
             if action == "interact" or input_text:
-                await asyncio.sleep(1.5) # Wait for app to focus
+                await asyncio.sleep(1.5)  # Wait for app to focus
                 return await _interact_with_app(result["message"], input_text)
-            
+
             return result["message"]
 
     return (
@@ -86,7 +94,8 @@ async def _try_registry(aliases: list[str]) -> dict:
                     if exe_path and Path(exe_path).exists():
                         subprocess.Popen([exe_path], shell=False)
                         return {
-                            "success": True, "method": "registry",
+                            "success": True,
+                            "method": "registry",
                             "message": f"Launched {aliases[0]} successfully.",
                         }
             except FileNotFoundError:
@@ -98,7 +107,9 @@ async def _try_registry(aliases: list[str]) -> dict:
 
 async def _try_direct_search(aliases: list[str]) -> dict:
     """Walk install dirs looking for exes matching any alias."""
-    terms = [a.lower().replace(" ", "").replace("-", "").replace("_", "") for a in aliases]
+    terms = [
+        a.lower().replace(" ", "").replace("-", "").replace("_", "") for a in aliases
+    ]
     candidates: list[Path] = []
 
     for root in _SEARCH_ROOTS:
@@ -110,13 +121,23 @@ async def _try_direct_search(aliases: list[str]) -> dict:
                 if p.is_dir():
                     try:
                         for exe in p.glob("*.exe"):
-                            stem = exe.stem.lower().replace(" ", "").replace("-", "").replace("_", "")
+                            stem = (
+                                exe.stem.lower()
+                                .replace(" ", "")
+                                .replace("-", "")
+                                .replace("_", "")
+                            )
                             if any(t in stem or stem in t for t in terms):
                                 candidates.append(exe)
                     except Exception:
                         continue
                 elif p.suffix.lower() == ".exe":
-                    stem = p.stem.lower().replace(" ", "").replace("-", "").replace("_", "")
+                    stem = (
+                        p.stem.lower()
+                        .replace(" ", "")
+                        .replace("-", "")
+                        .replace("_", "")
+                    )
                     if any(t in stem or stem in t for t in terms):
                         candidates.append(p)
         except Exception:
@@ -143,7 +164,8 @@ async def _try_direct_search(aliases: list[str]) -> dict:
     logger.debug("Direct search matched: %s", best)
     subprocess.Popen([str(best)], shell=False)
     return {
-        "success": True, "method": "direct_search",
+        "success": True,
+        "method": "direct_search",
         "message": f"Launched {aliases[0]} from {best.parent.name}.",
     }
 
@@ -165,7 +187,8 @@ async def _try_shortcut_search(aliases: list[str]) -> dict:
                 if any(t in stem_lower for t in terms):
                     os.startfile(str(lnk))
                     return {
-                        "success": True, "method": "shortcut",
+                        "success": True,
+                        "method": "shortcut",
                         "message": f"Launched {aliases[0]} via shortcut.",
                     }
         except Exception as exc:
@@ -191,7 +214,7 @@ async def _try_shell_execute(app_name: str, aliases: list[str]) -> dict:
         "edge": "microsoft-edge:",
         "browser": "https://google.com",
     }
-    
+
     potential_uris = []
     # Fuzzy match aliases against uri_map
     for alias in aliases + [app_name]:
@@ -209,10 +232,17 @@ async def _try_shell_execute(app_name: str, aliases: list[str]) -> dict:
     import shlex
     import shutil
 
-    candidates = potential_uris + [app_name] + aliases + [
-        "calc.exe", "mspaint.exe", "notepad.exe",
-    ]
-    
+    candidates = (
+        potential_uris
+        + [app_name]
+        + aliases
+        + [
+            "calc.exe",
+            "mspaint.exe",
+            "notepad.exe",
+        ]
+    )
+
     for candidate in candidates:
         try:
             if ":" in candidate and any(u in candidate for u in uri_map.values()):
@@ -231,18 +261,20 @@ async def _try_shell_execute(app_name: str, aliases: list[str]) -> dict:
                     continue
 
             return {
-                "success": True, "method": "shell_execute",
+                "success": True,
+                "method": "shell_execute",
                 "message": f"Launched {app_name}.",
             }
         except Exception as exc:
             logger.debug("Shell execute '%s' failed: %s", candidate, exc)
-            
+
     return {"success": False}
 
 
 async def _try_start_menu_search(app_name: str) -> dict:
     """Last resort: clipboard paste into Start Menu (avoids typewrite bug)."""
     import tkinter as tk
+
     root_tk = None
     try:
         root_tk = tk.Tk()
@@ -259,7 +291,8 @@ async def _try_start_menu_search(app_name: str) -> dict:
         await asyncio.sleep(0.5)
 
         return {
-            "success": True, "method": "start_menu",
+            "success": True,
+            "method": "start_menu",
             "message": f"Searched Start Menu for '{app_name}' and launched the top result.",
         }
     except Exception as exc:
@@ -283,9 +316,13 @@ async def _interact_with_app(launch_msg: str, input_text: str) -> str:
         # (e.g. "5 plus 5" -> "5+5=")
         processed_input = input_text.lower()
         processed_input = processed_input.replace("plus", "+").replace("minus", "-")
-        processed_input = processed_input.replace("times", "*").replace("multiplied by", "*")
-        processed_input = processed_input.replace("divided by", "/").replace("equals", "=")
-        
+        processed_input = processed_input.replace("times", "*").replace(
+            "multiplied by", "*"
+        )
+        processed_input = processed_input.replace("divided by", "/").replace(
+            "equals", "="
+        )
+
         if "=" not in processed_input and any(op in processed_input for op in "+-*/"):
             processed_input += "="
 

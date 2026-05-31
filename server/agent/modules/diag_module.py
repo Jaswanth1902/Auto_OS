@@ -2,25 +2,33 @@
 diag_module.py — System diagnostics and crash explanation for AutoOS.
 Uses action_params.check_type from the planner.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
 import subprocess
+from typing import Any
 
 logger = logging.getLogger("AutoOS.diag_module")
 
 
-async def run(task: str, entities: list[str], action_params: dict) -> str:
+async def run(task: str, entities: list[str], action_params: dict[str, Any]) -> str:
     check_type: str = action_params.get("check_type", "").lower()
     task_lower = task.lower()
 
-    if check_type == "crash" or any(w in task_lower for w in ("crash", "blue screen", "bsod", "error", "event log")):
+    if check_type == "crash" or any(
+        w in task_lower for w in ("crash", "blue screen", "bsod", "error", "event log")
+    ):
         return await _explain_crashes()
-    if check_type == "performance" or any(w in task_lower for w in ("slow", "performance", "speed", "lag", "freez")):
+    if check_type == "performance" or any(
+        w in task_lower for w in ("slow", "performance", "speed", "lag", "freez")
+    ):
         return await _performance_check()
-    if check_type == "recycle_bin" or any(w in task_lower for w in ("recycle", "trash", "deleted")):
+    if check_type == "recycle_bin" or any(
+        w in task_lower for w in ("recycle", "trash", "deleted")
+    ):
         return await _recycle_bin_info()
 
     # Default: performance check
@@ -29,6 +37,7 @@ async def run(task: str, entities: list[str], action_params: dict) -> str:
 
 import sys
 
+
 async def _explain_crashes() -> str:
     if sys.platform != "win32":
         return "Crash log analysis is only available on Windows."
@@ -36,17 +45,21 @@ async def _explain_crashes() -> str:
         result = await asyncio.to_thread(
             subprocess.run,
             [
-                "powershell", "-Command",
+                "powershell",
+                "-Command",
                 "Get-EventLog -LogName System -EntryType Error -Newest 5 "
                 "| Select-Object TimeGenerated, Source, Message "
-                "| ConvertTo-Json"
+                "| ConvertTo-Json",
             ],
-            capture_output=True, text=True, timeout=20
+            capture_output=True,
+            text=True,
+            timeout=20,
         )
         if result.returncode != 0 or not result.stdout.strip():
             return "Good news — I checked your system logs and did not find any recent crashes or serious errors."
 
         import json
+
         events = json.loads(result.stdout)
         if isinstance(events, dict):
             events = [events]
@@ -66,9 +79,11 @@ async def _explain_crashes() -> str:
     except Exception as exc:
         return f"Could not read system logs: {exc}"
 
+
 async def _performance_check() -> str:
     try:
         import psutil
+
         cpu = await asyncio.to_thread(psutil.cpu_percent, interval=1)
         mem = await asyncio.to_thread(psutil.virtual_memory)
         root_path = os.path.abspath(os.sep)
@@ -76,15 +91,21 @@ async def _performance_check() -> str:
 
         mem_pct = mem.percent
         disk_pct = disk.percent
-        disk_free_gb = disk.free / (1024 ** 3)
+        disk_free_gb = disk.free / (1024**3)
 
         issues = []
         if cpu > 80:
-            issues.append(f"CPU is very busy ({cpu:.0f}%) — some program may be using a lot of power.")
+            issues.append(
+                f"CPU is very busy ({cpu:.0f}%) — some program may be using a lot of power."
+            )
         if mem_pct > 85:
-            issues.append(f"Memory is almost full ({mem_pct:.0f}%) — try closing some apps.")
+            issues.append(
+                f"Memory is almost full ({mem_pct:.0f}%) — try closing some apps."
+            )
         if disk_pct > 90:
-            issues.append(f"Your C: drive is almost full ({disk_free_gb:.1f} GB free) — consider deleting old files.")
+            issues.append(
+                f"Your C: drive is almost full ({disk_free_gb:.1f} GB free) — consider deleting old files."
+            )
 
         if not issues:
             return (
@@ -104,17 +125,21 @@ async def _recycle_bin_info() -> str:
         result = await asyncio.to_thread(
             subprocess.run,
             [
-                "powershell", "-Command",
+                "powershell",
+                "-Command",
                 "$shell = New-Object -ComObject Shell.Application; "
                 "$bin = $shell.Namespace(10); "
-                "$bin.Items() | Select-Object -ExpandProperty Name | ConvertTo-Json"
+                "$bin.Items() | Select-Object -ExpandProperty Name | ConvertTo-Json",
             ],
-            capture_output=True, text=True, timeout=15
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if result.returncode != 0 or not result.stdout.strip():
             return "Your Recycle Bin is empty."
 
         import json
+
         try:
             items = json.loads(result.stdout)
             if isinstance(items, str):
@@ -127,7 +152,9 @@ async def _recycle_bin_info() -> str:
             lines.append(f"  {item}")
         if len(items) > 15:
             lines.append(f"  ... and {len(items) - 15} more.")
-        lines.append("\nTo restore a file, open the Recycle Bin on your desktop and right-click the file.")
+        lines.append(
+            "\nTo restore a file, open the Recycle Bin on your desktop and right-click the file."
+        )
         return "\n".join(lines)
     except Exception as exc:
         return f"Could not check Recycle Bin: {exc}"
