@@ -39,6 +39,10 @@ app.include_router(system_router)
 os.makedirs(os.path.join(os.path.dirname(__file__), "screenshots"), exist_ok=True)
 app.mount("/screenshots", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "screenshots")), name="screenshots")
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 @app.on_event("startup")
 async def startup_event():
     # Setup Database
