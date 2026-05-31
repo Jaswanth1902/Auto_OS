@@ -7,25 +7,41 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "jest"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "concurrently": "^9.2.1",
-    "electron": "^41.5.0",
+    "electron": "^42.3.0",
     "electron-builder": "^26.8.1",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.10",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "ts-jest": "^29.4.11",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
     "wait-on": "^9.0.5"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.1",
     "lucide-react": "^1.14.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "react-router-dom": "^7.14.1",
     "recharts": "^3.8.1"
+  },
+  "build": {
+    "appId": "com.autopattern.app",
+    "win": {
+      "target": "nsis,portable",
+      "forceCodeSigning": false
+    }
   }
 }

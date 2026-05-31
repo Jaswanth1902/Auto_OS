@@ -1,0 +1,23 @@
+{
+  "name": "extension",
+  "version": "1.0.0",
+  "description": "A Chrome extension that captures user workflows and interactions for task mining analysis, featuring advanced noise reduction and data export capabilities.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "electron": "^42.3.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
+  }
+}

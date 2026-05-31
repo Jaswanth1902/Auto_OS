@@ -16,7 +16,9 @@ import {
 import ChatView from './ChatView';
 import DashboardView from './DashboardView';
 import SkillsView from './SkillsView';
-import WorkflowsView from './WorkflowsView';
+import WorkflowsView from './workflows/WorkflowsView';
+import SettingsView from './SettingsView';
+import RunView from './run/RunView';
 import { Message } from './types';
 import './index.css';
 
@@ -52,9 +54,9 @@ function SidebarDock() {
         </Link>
       </div>
       <div className="dock-bottom">
-        <div className="dock-item" title="Settings">
+        <Link to="/settings" className={`dock-item ${location.pathname === '/settings' ? 'active' : ''}`} title="Settings">
           <Settings size={24} />
-        </div>
+        </Link>
         <div className="dock-item user-avatar" title="Account">
           <User size={24} />
         </div>
@@ -70,17 +72,54 @@ function App() {
   const [threadHistory, setThreadHistory] = useState<any[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState<'idle' | 'analyzing' | 'executing'>('idle');
-  const [compactState, setCompactState] = useState<{ isCompact: boolean; status: string; description: string; type?: 'alert' | 'task' }>({
-    isCompact: false,
-    status: '',
-    description: '',
-    type: 'task'
-  });
-  const [miniInput, setMiniInput] = useState('');
+
+  // Compact state controls only visibility and basic type in App.tsx
+  const [isCompact, setIsCompact] = useState(false);
+  const [compactType, setCompactType] = useState<'alert' | 'task' | undefined>('task');
   
   // --- Face Auth State ---
   const [faceRegistered, setFaceRegistered] = useState(false);
   const [faceAuthAction, setFaceAuthAction] = useState<{ mode: 'register' } | { mode: 'verify', task: string, workflow: any } | null>(null);
+
+  // Ref for the latest task to run so RunView can pick it up
+  const [taskToRun, setTaskToRun] = useState<string | null>(null);
+  // Ref to hold a function from RunView to execute the task
+  const executeRunTaskRef = useRef<((task: string) => void) | null>(null);
+
+  // --- Guardian Heartbeat ---
+  useEffect(() => {
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let isMounted = true;
+    let guardianWs: WebSocket | null = null;
+
+    const connect = () => {
+      if (!isMounted) return;
+      guardianWs = new WebSocket(`ws://localhost:8765/ws/execution/global_guardian`);
+      guardianWs.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'guardian_alert') {
+            setCompactType('alert');
+            setIsCompact(true);
+            // In a real app we'd dispatch to RunView, but for now we just show it
+            window.electronAPI?.resizeWindow(480, 180);
+          }
+        } catch (e) {
+          console.error('Failed to parse guardian message:', e);
+        }
+      };
+      guardianWs.onerror = () => guardianWs?.close();
+      guardianWs.onclose = () => {
+        if (isMounted) reconnectTimeout = setTimeout(connect, 3000);
+      };
+    };
+    connect();
+    return () => {
+      isMounted = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      guardianWs?.close();
+    };
+  }, []);
 
   useEffect(() => {
     fetch('http://localhost:8765/api/face-auth/status')
@@ -88,10 +127,6 @@ function App() {
       .then(data => setFaceRegistered(data.registered))
       .catch(console.error);
   }, []);
-  
-  const ws = useRef<WebSocket | null>(null);
-  const guardianWs = useRef<WebSocket | null>(null);
-  const executionIdRef = useRef<string | null>(null);
 
   const addMessage = useCallback((role: Message['role'], content: string, extra?: Record<string, any>) => {
     const msg: Message = {
@@ -101,21 +136,6 @@ function App() {
       ...extra,
     };
     setMessages(prev => [...prev, msg]);
-  }, []);
-
-  // --- Global Cleanup on Unmount ---
-  useEffect(() => {
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-        ws.current = null;
-      }
-      if (guardianWs.current) {
-        guardianWs.current.close();
-        guardianWs.current = null;
-      }
-      executionIdRef.current = null;
-    };
   }, []);
 
   // --- Initial Hydration ---
@@ -162,178 +182,62 @@ function App() {
     }
     return () => { if (timeoutId) clearTimeout(timeoutId); };
   }, [threadId, messages]);
-  // --- Guardian Heartbeat ---
-  useEffect(() => {
-    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
-    let isMounted = true;
-    
-    const connect = () => {
-      if (!isMounted) return;
-      guardianWs.current = new WebSocket(`ws://localhost:8765/ws/execution/global_guardian`);
-      guardianWs.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'guardian_alert') {
-            setCompactState({ isCompact: true, status: 'GUARDIAN ALERT', description: data.message, type: 'alert' });
-            window.electronAPI?.resizeWindow(480, 180);
-          }
-        } catch (e) {
-          console.error('Failed to parse guardian message:', e);
-        }
-      };
-      guardianWs.current.onerror = () => guardianWs.current?.close();
-      guardianWs.current.onclose = () => {
-        if (isMounted) reconnectTimeout = setTimeout(connect, 3000);
-      };
-    };
-    connect();
-    return () => {
-      isMounted = false;
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      guardianWs.current?.close();
-    };
-  }, []);
 
-  const compactStateRef = useRef(compactState);
-  useEffect(() => { compactStateRef.current = compactState; }, [compactState]);
-
-  const handleStop = async () => {
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'stop' }));
-    if (executionIdRef.current) {
-      fetch(`http://localhost:8765/executions/${executionIdRef.current}/stop`, { method: 'POST' }).catch(() => {});
-    }
-    setIsRunning(false);
-    setStatus('idle');
-    updateCompact(compactStateRef.current.isCompact, 'IDLE', 'Task cancelled.');
-    addMessage('system', 'Execution stopped.');
-  };
-
-  const updateCompact = useCallback((isCompactActive: boolean, statusStr: string = '', desc: string = '') => {
-    setCompactState(prev => ({ ...prev, isCompact: isCompactActive, status: statusStr, description: desc }));
+  const updateCompact = useCallback((isCompactActive: boolean) => {
+    setIsCompact(isCompactActive);
     if (isCompactActive) window.electronAPI?.resizeWindow(480, 180);
     else window.electronAPI?.resizeWindow(900, 700);
   }, []);
 
-
+  // This is the function called from ChatView, DashboardView, WorkflowsView
   const handleRun = async (taskStr: string) => {
     if (!taskStr.trim() || isRunning) return;
     
+    // Set up app state immediately to show it's running
     setIsRunning(true);
     setStatus('analyzing');
     addMessage('user', taskStr);
-    updateCompact(compactStateRef.current.isCompact, 'ANALYZING', 'Thinking...');
 
-    return new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const safeReject = (err: any) => {
-        if (settled) return;
-        settled = true;
-        setIsRunning(false);
-        setStatus('idle');
-        updateCompact(compactStateRef.current.isCompact, 'ERROR', String(err));
-        reject(err);
-      };
-      const safeResolve = () => {
-        if (settled) return;
-        settled = true;
-        resolve();
-      };
-
-      fetch('http://localhost:8765/executions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task: taskStr })
-      })
-      .then(res => res.json())
-      .then(data => {
-        executionIdRef.current = data.id;
-        ws.current = new WebSocket(`ws://localhost:8765/ws/execution/${data.id}`);
-        
-        ws.current.onopen = () => ws.current?.send(JSON.stringify({ type: 'start', task: taskStr }));
-        
-        ws.current.onerror = () => {
-           safeReject(new Error('WebSocket connection error'));
-           ws.current = null;
-        };
-        ws.current.onclose = () => {
-           safeReject(new Error('WebSocket closed unexpectedly'));
-           ws.current = null;
-        };
-
-        ws.current.onmessage = (event) => {
-          let msg;
-          try {
-            msg = JSON.parse(event.data);
-          } catch (e) {
-            console.error("Malformed websocket message:", e);
-            return;
-          }
-
-          switch (msg.type) {
-            case 'classification':
-              setStatus('executing');
-              if (msg.plain_english_plan) {
-                updateCompact(true, 'EXECUTING', msg.plain_english_plan);
-                addMessage('agent', msg.plain_english_plan, { type: 'info' });
-              }
-              break;
-            case 'complete':
-              addMessage('agent', msg.summary);
-              setIsRunning(false);
-              setStatus('idle');
-              updateCompact(compactStateRef.current.isCompact, '', msg.summary);
-              safeResolve();
-              break;
-            case 'step_error':
-              addMessage('system', `Error: ${msg.error}`);
-              safeReject(msg.error);
-              break;
-          }
-        };
-      })
-      .catch(e => {
-        addMessage('system', 'Failed to connect to backend.');
-        safeReject(e);
-      });
-    });
+    // If RunView provides an execution function, use it, otherwise set the state to pass down
+    if (executeRunTaskRef.current) {
+        executeRunTaskRef.current(taskStr);
+    } else {
+        setTaskToRun(taskStr);
+    }
   };
 
-  // --- UI Handlers ---
-  const handleMiniRun = () => {
-    handleRun(miniInput);
-    setMiniInput('');
+  // Ref to hold the stop function from RunView
+  const executeStopTaskRef = useRef<(() => void) | null>(null);
+
+  const handleStop = async () => {
+    if (executeStopTaskRef.current) {
+        executeStopTaskRef.current();
+    }
+    setIsRunning(false);
+    setStatus('idle');
   };
-
-  const handleExpand = () => updateCompact(false);
-
-  const isAlert = compactState.type === 'alert';
 
   return (
     <div className="app-root">
-      {compactState.isCompact && (
-        <div className={`compact-popup ${isAlert ? 'alert-mode' : ''}`}>
-          <div className="compact-header">
-            <div className="compact-top-bar">
-              <div className={`compact-status-chip ${isAlert ? 'chip-alert' : ''}`}>
-                {isAlert ? <ShieldAlert size={12} /> : (isRunning ? <Loader2 className="animate-spin" size={12} /> : <MessageSquare size={12} />)}
-                {compactState.status || 'READY'}
-              </div>
-              {!isAlert && <button className="compact-action-btn" onClick={handleExpand}><Maximize2 size={14} /></button>}
-            </div>
-            <div className="compact-desc">{compactState.description || (messages.length > 0 ? messages[messages.length-1].content : 'Waiting...')}</div>
-          </div>
-          <div className="compact-input-area">
-            {isAlert ? <button className="dismiss-btn" onClick={() => updateCompact(false)}>DISMISS</button> : (
-              <div className="compact-input-box">
-                <input value={miniInput} onChange={(e) => setMiniInput(e.target.value)} placeholder={isRunning ? "Working..." : "Next instruction..."} disabled={isRunning} onKeyDown={(e) => e.key === 'Enter' && handleMiniRun()} />
-                {isRunning ? <button className="compact-stop-btn" onClick={handleStop}><XCircle size={18} /></button> : <button className="compact-send-btn" onClick={handleMiniRun} disabled={!miniInput.trim()}><Send size={18} /></button>}
-              </div>
-            )}
-          </div>
-        </div>
+      {(isCompact || isRunning) && (
+        <RunView
+          isCompact={isCompact}
+          setIsCompact={updateCompact}
+          compactType={compactType}
+          setCompactType={setCompactType}
+          messages={messages}
+          addMessage={addMessage}
+          isRunning={isRunning}
+          setIsRunning={setIsRunning}
+          setStatus={setStatus}
+          taskToRun={taskToRun}
+          setTaskToRun={setTaskToRun}
+          executeRunTaskRef={executeRunTaskRef}
+          executeStopTaskRef={executeStopTaskRef}
+        />
       )}
 
-      <div className="main-app-container" style={{ display: compactState.isCompact ? 'none' : 'block' }}>
+      <div className="main-app-container" style={{ display: isCompact ? 'none' : 'block' }}>
           <div className="root-layout">
             <SidebarDock />
             <div className="content-area">
@@ -354,6 +258,7 @@ function App() {
                 <Route path="/dashboard" element={<DashboardView />} />
                 <Route path="/workflows" element={<WorkflowsView handleRun={handleRun} isRunning={isRunning} faceRegistered={faceRegistered} setFaceAuthAction={setFaceAuthAction} />} />
                 <Route path="/skills" element={<SkillsView />} />
+                <Route path="/settings" element={<SettingsView />} />
               </Routes>
             </div>
           </div>
