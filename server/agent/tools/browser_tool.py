@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from server.scripts.cleanup_browser import cleanup_zombie_processes
+
 logger = logging.getLogger("AutoOS.browser")
 
 
@@ -83,8 +85,15 @@ class BrowserAutomationRunner:
         except ImportError as exc:
             raise RuntimeError("browser-use is not installed. Run `uv sync` in the server folder.") from exc
 
+        downloads_path = Path(os.getcwd()) / "server" / "downloads"
+        downloads_path.mkdir(parents=True, exist_ok=True)
+        timeout_seconds = 30
+
         if self.use_cloud:
-            return Browser(use_cloud=True, headless=self.headless)
+            return Browser(
+                use_cloud=True,
+                headless=self.headless,
+            )
 
         executable_path = os.getenv("BROWSER_EXECUTABLE_PATH") or _find_chromium_executable()
         if executable_path:
@@ -93,12 +102,14 @@ class BrowserAutomationRunner:
                 headless=self.headless,
                 executable_path=executable_path,
                 keep_alive=_env_bool("BROWSER_KEEP_ALIVE", default=True),
+                timeout=timeout_seconds,
             )
 
         logger.info("No system Chrome/Chromium found; browser-use will use its default browser.")
         return Browser(
             headless=self.headless,
             keep_alive=_env_bool("BROWSER_KEEP_ALIVE", default=True),
+            timeout=timeout_seconds,
         )
 
     async def run_task(
@@ -117,16 +128,79 @@ class BrowserAutomationRunner:
             raise RuntimeError("browser-use is not installed. Run `uv sync` in the server folder.") from exc
 
         try:
-            enhanced_task = _inject_sensitive_data_instructions(task, sensitive_data)
+            # Check for generic auto-login navigation flow template
+            if task.startswith("auto-login:"):
+                # Extract just the portal type from the first line
+                first_line = task.split("\n", 1)[0]
+                portal_type = first_line.split(":", 1)[1].strip()
+                rest_of_task = task.split("\n", 1)[1] if "\n" in task else ""
+
+                from .selectors import get_selector
+                email_sel = get_selector(portal_type, "email_input") or get_selector("login", "email_input")
+                password_sel = get_selector(portal_type, "password_input") or get_selector("login", "password_input")
+                submit_sel = get_selector(portal_type, "submit_button") or get_selector("login", "submit_button")
+
+                login_instructions = f"Go to the login page. Fill the email field using selector `{email_sel}` with the provided email. Fill the password field using selector `{password_sel}` with the provided password. Click the submit button using selector `{submit_sel}`. "
+                enhanced_task = login_instructions + rest_of_task + "\n" + _inject_sensitive_data_instructions("", sensitive_data)
+            else:
+                enhanced_task = _inject_sensitive_data_instructions(task, sensitive_data)
+
             llm = self._create_llm()
             page_extraction_llm = self._create_page_extraction_llm()
             browser = self._create_browser()
+
+            from browser_use import Controller
+            controller = Controller()
+            from .browser_utils import robust_click, robust_fill, verify_text
+            from browser_use.browser.context import BrowserContext
+            from browser_use.agent.views import ActionResult
+
+            @controller.action('Click an element robustly, handling visibility and stale references')
+            async def custom_robust_click(selector: str, browser: BrowserContext):
+                page = await browser.get_current_page()
+                success = await robust_click(page, selector)
+                if not success:
+                    return ActionResult(error=f"Failed to robustly click {selector}")
+                return ActionResult(extracted_content=f"Clicked {selector}")
+
+            @controller.action('Fill an element robustly, handling visibility and stale references')
+            async def custom_robust_fill(selector: str, text: str, browser: BrowserContext):
+                page = await browser.get_current_page()
+                success = await robust_fill(page, selector, text)
+                if not success:
+                    return ActionResult(error=f"Failed to robustly fill {selector}")
+                return ActionResult(extracted_content=f"Filled {selector}")
+
+            @controller.action('Verify text is visible on the page')
+            async def custom_verify_text(text: str, browser: BrowserContext):
+                page = await browser.get_current_page()
+                success = await verify_text(page, text)
+                if not success:
+                    return ActionResult(error=f"Text '{text}' not found")
+                return ActionResult(extracted_content=f"Found text '{text}'")
+
+            @controller.action('Download a file and return the saved path')
+            async def custom_download_file(url: str, browser: BrowserContext):
+                page = await browser.get_current_page()
+                try:
+                    async with page.expect_download() as download_info:
+                        await page.goto(url)
+                    download = await download_info.value
+
+                    downloads_dir = Path(os.getcwd()) / "server" / "downloads"
+                    downloads_dir.mkdir(parents=True, exist_ok=True)
+
+                    file_path = downloads_dir / download.suggested_filename
+                    await download.save_as(file_path)
+                    return ActionResult(extracted_content=f"Downloaded file to {file_path.absolute()}")
+                except Exception as e:
+                    return ActionResult(error=f"Download failed: {str(e)}")
 
             agent = Agent(
                 task=enhanced_task,
                 llm=llm,
                 browser=browser,
-                tools=Tools(),
+                controller=controller,
                 sensitive_data=sensitive_data,
                 use_vision=_vision_setting(),
                 page_extraction_llm=page_extraction_llm,
@@ -148,6 +222,8 @@ class BrowserAutomationRunner:
         except Exception as exc:
             logger.error("Browser automation failed", exc_info=True)
             return BrowserTaskResult(success=False, task=task, error=str(exc))
+        finally:
+            cleanup_zombie_processes()
 
 
 async def run_browser_task(
