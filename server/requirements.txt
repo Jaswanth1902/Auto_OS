@@ -8,7 +8,7 @@ aiofiles==25.1.0
     # via bubus
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.13.3
+aiohttp==3.13.4
     # via browser-use
 aiosignal==1.4.0
     # via aiohttp
@@ -61,9 +61,9 @@ beautifulsoup4==4.14.3
     #   markdownify
 blinker==1.9.0
     # via flask
-browser-use==0.12.6
+browser-use==0.12.9
     # via server (pyproject.toml)
-browser-use-sdk==2.0.15
+browser-use-sdk==3.4.2
     # via browser-use
 bubus==1.5.6
     # via browser-use
@@ -76,7 +76,9 @@ certifi==2026.4.22
     #   requests
     #   selenium
 cffi==2.0.0
-    # via cryptography
+    # via
+    #   cryptography
+    #   trio
 chardet==7.4.3
     # via paddlex
 charset-normalizer==3.4.7
@@ -91,8 +93,16 @@ click==8.3.1
     #   uvicorn
 cloudpickle==3.1.2
     # via browser-use
+colorama==0.4.6
+    # via
+    #   click
+    #   colorlog
+    #   tqdm
+    #   typer
 colorlog==6.10.1
     # via paddlex
+comtypes==1.4.16
+    # via pywinauto
 crc32c==2.8
     # via bce-python-sdk
 cryptography==47.0.0
@@ -101,12 +111,6 @@ cryptography==47.0.0
     #   pyjwt
 ctranslate2==4.7.2
     # via faster-whisper
-cuda-bindings==13.3.1
-    # via torch
-cuda-pathfinder==1.5.5
-    # via cuda-bindings
-cuda-toolkit==13.0.2
-    # via torch
 cyclopts==4.16.1
     # via together
 deepface==0.0.100
@@ -384,47 +388,6 @@ numpy==2.4.4
     #   scipy
     #   shapely
     #   tensorflow
-nvidia-cublas==13.1.1.3
-    # via
-    #   nvidia-cudnn-cu13
-    #   nvidia-cusolver
-    #   torch
-nvidia-cuda-cupti==13.0.85
-    # via cuda-toolkit
-nvidia-cuda-nvrtc==13.0.88
-    # via
-    #   cuda-toolkit
-    #   nvidia-cublas
-nvidia-cuda-runtime==13.0.96
-    # via cuda-toolkit
-nvidia-cudnn-cu13==9.20.0.48
-    # via torch
-nvidia-cufft==12.0.0.61
-    # via cuda-toolkit
-nvidia-cufile==1.15.1.6
-    # via cuda-toolkit
-nvidia-curand==10.4.0.35
-    # via cuda-toolkit
-nvidia-cusolver==12.0.4.66
-    # via cuda-toolkit
-nvidia-cusparse==12.6.3.3
-    # via
-    #   cuda-toolkit
-    #   nvidia-cusolver
-nvidia-cusparselt-cu13==0.8.1
-    # via torch
-nvidia-nccl-cu13==2.29.7
-    # via torch
-nvidia-nvjitlink==13.0.88
-    # via
-    #   cuda-toolkit
-    #   nvidia-cufft
-    #   nvidia-cusolver
-    #   nvidia-cusparse
-nvidia-nvshmem-cu13==3.4.5
-    # via torch
-nvidia-nvtx==13.0.85
-    # via cuda-toolkit
 oauthlib==3.3.1
     # via requests-oauthlib
 ollama==0.6.1
@@ -485,7 +448,7 @@ pandas==3.0.3
     #   paddlex
 pfzy==0.3.4
     # via inquirerpy
-pillow==12.1.1
+pillow==12.2.0
     # via
     #   browser-use
     #   deepface
@@ -495,7 +458,7 @@ pillow==12.1.1
     #   reportlab
     #   retina-face
     #   together
-playwright==1.59.0
+playwright==1.60.0
     # via server (pyproject.toml)
 portalocker==3.2.0
     # via bubus
@@ -565,9 +528,7 @@ pydantic==2.12.5
     #   sqlmodel
     #   together
 pydantic-core==2.41.5
-    # via
-    #   browser-use-sdk
-    #   pydantic
+    # via pydantic
 pydantic-settings==2.14.0
     # via mcp
 pyee==13.0.1
@@ -586,7 +547,7 @@ pyotp==2.9.0
     # via browser-use
 pyparsing==3.3.2
     # via httplib2
-pypdf==6.9.1
+pypdf==6.10.2
     # via browser-use
 pypdfium2==5.8.0
     # via paddlex
@@ -610,7 +571,7 @@ python-dateutil==2.9.0.post0
     #   posthog
 python-docx==1.2.0
     # via browser-use
-python-dotenv==1.2.1
+python-dotenv==1.2.2
     # via
     #   server (pyproject.toml)
     #   browser-use
@@ -618,12 +579,19 @@ python-dotenv==1.2.1
     #   pydantic-settings
 python-multipart==0.0.27
     # via mcp
-python3-xlib==0.15
-    # via
-    #   mouseinfo
-    #   pyautogui
 pytweening==1.2.0
     # via pyautogui
+pywin32==311
+    # via
+    #   server (pyproject.toml)
+    #   gui-agents
+    #   mcp
+    #   portalocker
+    #   pywinauto
+pywinauto==0.6.9
+    # via
+    #   server (pyproject.toml)
+    #   gui-agents
 pyyaml==6.0.2
     # via
     #   ctranslate2
@@ -639,7 +607,7 @@ regex==2026.4.4
     # via tiktoken
 reportlab==4.4.9
     # via browser-use
-requests==2.32.5
+requests==2.33.0
     # via
     #   aistudio-sdk
     #   browser-use
@@ -710,6 +678,7 @@ six==1.17.0
     #   markdownify
     #   posthog
     #   python-dateutil
+    #   pywinauto
     #   tensorflow
 sniffio==1.3.1
     # via
@@ -790,10 +759,6 @@ trio==0.33.0
     #   trio-websocket
 trio-websocket==0.12.2
     # via selenium
-triton==3.7.0
-    # via
-    #   openai-whisper
-    #   torch
 typer==0.26.4
     # via huggingface-hub
 types-pyyaml==6.0.12.20260518
@@ -811,7 +776,6 @@ typing-extensions==4.15.0
     #   anyio
     #   beautifulsoup4
     #   browser-use
-    #   browser-use-sdk
     #   bubus
     #   cdp-use
     #   fastapi
@@ -847,6 +811,8 @@ typing-inspection==0.4.2
     #   mcp
     #   pydantic
     #   pydantic-settings
+tzdata==2026.2
+    # via pandas
 ujson==5.12.1
     # via paddlex
 uritemplate==4.2.0
