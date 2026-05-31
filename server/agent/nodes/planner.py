@@ -16,7 +16,7 @@ from agent.bus import emit_event
 from agent.llm_factory import get_llm, invoke_with_fallback
 from agent.state import AgentState
 
-logger = logging.getLogger("AutoOS.planner")
+from utils.logger import agent_logger as logger
 
 
 # ── Structured output schema ──────────────────────────────────────────────────

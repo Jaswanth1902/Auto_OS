@@ -17,7 +17,7 @@ from agent.tools.browser_tool import run_browser_task
 from agent.bus import emit_event
 from agent.modules import app_module
 
-logger = logging.getLogger("AutoOS.executor")
+from utils.logger import agent_logger as logger
 
 # ─────────────────────────────────────────
 # DIRECT OS EXECUTOR — No LLM, No Hanging

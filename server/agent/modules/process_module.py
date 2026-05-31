@@ -8,7 +8,7 @@ import logging
 
 import psutil
 
-logger = logging.getLogger("AutoOS.process_module")
+from utils.logger import agent_logger as logger
 _MAX_LIST = 15
 
 

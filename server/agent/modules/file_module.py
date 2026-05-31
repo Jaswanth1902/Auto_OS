@@ -11,7 +11,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-logger = logging.getLogger("AutoOS.file_module")
+from utils.logger import agent_logger as logger
 
 _USER_ROOTS = [
     Path.home() / "Documents",

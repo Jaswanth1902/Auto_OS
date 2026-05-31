@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import subprocess
 
-logger = logging.getLogger("AutoOS.security_module")
+from utils.logger import agent_logger as logger
 
 
 async def run(task: str, entities: list[str], action_params: dict) -> str:

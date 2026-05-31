@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from deepface import DeepFace
 
-logger = logging.getLogger("AutoOS.FaceAuth")
+from utils.logger import api_logger as logger
 
 router = APIRouter(prefix="/api/face-auth", tags=["Face Auth"])
 

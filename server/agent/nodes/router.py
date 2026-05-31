@@ -8,7 +8,7 @@ import logging
 
 from agent.state import AgentState
 
-logger = logging.getLogger("AutoOS.router")
+from utils.logger import agent_logger as logger
 
 # Sub-categories that go to the browser executor
 _BROWSER_SUBS = {"web_search", "web_form", "media_playback", "gov_portal"}
