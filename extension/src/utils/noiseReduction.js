@@ -41,7 +41,11 @@ class NoiseReducer {
             
             case 'input':
                 // Combine rapid typing on same field
-                return event1.data?.field_name === event2.data?.field_name;
+                return event1.automation?.selector === event2.automation?.selector;
+
+            case 'click':
+                // Combine duplicate clicks on same element
+                return event1.automation?.selector === event2.automation?.selector || event1.automation?.xpath === event2.automation?.xpath;
             
             default:
                 return false;
@@ -51,7 +55,7 @@ class NoiseReducer {
     // Check if event should be filtered out
     shouldFilterEvent(event) {
         // Filter out events on insignificant elements
-        if (event.data?.tag && this.isInsignificantElement(event.data.tag)) {
+        if (event.automation?.tag && this.isInsignificantElement(event.automation.tag)) {
             return true;
         }
 
@@ -72,7 +76,7 @@ class NoiseReducer {
 
         // Filter focus/blur on insignificant elements
         if ((event.event === 'focus' || event.event === 'blur') && 
-            this.isInsignificantElement(event.data?.tag)) {
+            this.isInsignificantElement(event.automation?.tag)) {
             return true;
         }
 
@@ -83,6 +87,14 @@ class NoiseReducer {
                 if (timeDiff < 1000) { // Less than 1 second
                     return true;
                 }
+            }
+        }
+
+        // Filter double clicks that bubble up
+        if (event.event === 'click' && this.lastEvent?.event === 'click') {
+            const timeDiff = event.timestamp - this.lastEvent.timestamp;
+            if (timeDiff < 200 && (event.automation?.selector === this.lastEvent.automation?.selector || event.automation?.xpath === this.lastEvent.automation?.xpath)) {
+                return true;
             }
         }
 
@@ -103,6 +115,8 @@ class NoiseReducer {
                 // Update the last event with latest data
                 last.timestamp = current.timestamp;
                 last.data = { ...last.data, ...current.data };
+                last.raw = { ...last.raw, ...current.raw };
+                last.automation = { ...last.automation, ...current.automation };
                 
                 // Track combination count
                 last.combinedCount = (last.combinedCount || 1) + 1;

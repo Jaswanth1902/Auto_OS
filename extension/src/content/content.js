@@ -51,9 +51,40 @@ function getXPath(el) {
 
 function getSelector(el) {
     if (!el) return null;
+
+    // 1. ID is most specific
     if (el.id) return `#${el.id}`;
-    if (el.getAttribute && el.getAttribute('data-testid')) {
+
+    // 2. data-testid or aria-label
+    if (el.getAttribute('data-testid')) {
         return `[data-testid="${el.getAttribute('data-testid')}"]`;
+    }
+    if (el.getAttribute('aria-label')) {
+        return `[aria-label="${el.getAttribute('aria-label')}"]`;
+    }
+
+    // 3. Classes
+    if (el.className && typeof el.className === 'string') {
+        const classes = el.className.split(' ').filter(c => c.trim().length > 0 && !c.includes('hover') && !c.includes('active') && !c.includes('focus'));
+        if (classes.length > 0) {
+            return `${el.tagName.toLowerCase()}.${classes.join('.')}`;
+        }
+    }
+
+    // 4. Name attribute (for inputs)
+    if (el.name) {
+        return `${el.tagName.toLowerCase()}[name="${el.name}"]`;
+    }
+
+    return null;
+}
+
+function getParentButtonOrAnchor(el) {
+    while (el && el !== document.body) {
+        if (el.tagName === 'BUTTON' || el.tagName === 'A') {
+            return el;
+        }
+        el = el.parentElement;
     }
     return null;
 }
@@ -79,8 +110,16 @@ function buildEvent(type, el, extra = {}) {
 
 // ---------- CLICK ----------
 document.addEventListener('click', e => {
-    recordEvent(buildEvent('click', e.target, {
-        text: e.target.innerText?.slice(0, 80) || null
+    let target = e.target;
+
+    // If we click inside a button or link (e.g. SVG or span), use the parent as the target
+    const parentInteractive = getParentButtonOrAnchor(target);
+    if (parentInteractive) {
+        target = parentInteractive;
+    }
+
+    recordEvent(buildEvent('click', target, {
+        text: target.innerText?.trim().slice(0, 80) || target.getAttribute('aria-label') || null
     }));
 }, true);
 

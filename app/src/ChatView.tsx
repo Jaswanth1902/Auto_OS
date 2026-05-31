@@ -325,19 +325,34 @@ function ChatView({
               autoFocus
             />
 
-            {/* Mic button — push and hold */}
+            {/* Mic button and Language Selector */}
             {!isRunning && !voiceActive && (
-              <button
-                className="btn-mic"
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onMouseLeave={() => { if (isRecording) stopRecording() }}
-                onTouchStart={(e) => { e.preventDefault(); startRecording() }}
-                onTouchEnd={(e) => { e.preventDefault(); stopRecording() }}
-                title="Hold to talk"
-              >
-                <Mic size={18} />
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  className="settings-select"
+                  aria-label="Prompt Language Selector"
+                  style={{ padding: '0.5rem', width: 'auto', minWidth: '80px', borderRadius: '0.75rem' }}
+                  defaultValue="en"
+                  onChange={(e) => {
+                    // Logic to set language preference would go here
+                  }}
+                >
+                  <option value="en">English</option>
+                  <option value="hi">Hindi</option>
+                  <option value="kn">Kannada</option>
+                </select>
+                <button
+                  className="btn-mic"
+                  onMouseDown={startRecording}
+                  onMouseUp={stopRecording}
+                  onMouseLeave={() => { if (isRecording) stopRecording() }}
+                  onTouchStart={(e) => { e.preventDefault(); startRecording() }}
+                  onTouchEnd={(e) => { e.preventDefault(); stopRecording() }}
+                  title="Hold to talk"
+                >
+                  <Mic size={18} />
+                </button>
+              </div>
             )}
 
             {isRunning ? (

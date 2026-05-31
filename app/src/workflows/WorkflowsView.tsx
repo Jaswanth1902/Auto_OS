@@ -1,26 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { 
-  Play, 
-  Plus, 
-  ArrowRight, 
-  Loader2, 
-  CheckCircle2, 
-  X, 
-  Save, 
-  Trash2,
-  ListPlus,
-  Download,
-  Upload,
-  Zap
-} from 'lucide-react';
-
-interface Workflow {
-  id: string;
-  name: string;
-  description: string;
-  steps: string[];
-  color: string;
-}
+import { useState, useEffect } from 'react';
+import { X, Save, Trash2, ListPlus, Loader2 } from 'lucide-react';
+import { WorkflowGrid } from './WorkflowGrid';
+import { ImportExportControls } from './ImportExportControls';
+import { Workflow } from './types';
 
 interface WorkflowsViewProps {
   handleRun: (task: string) => Promise<void>;
@@ -37,18 +19,15 @@ const GRADIENTS = [
   "linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%)"
 ];
 
-function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction }: WorkflowsViewProps) {
+export default function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction }: WorkflowsViewProps) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  
-  // Creator State
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [wfName, setWfName] = useState('');
   const [wfDesc, setWfDesc] = useState('');
   const [wfSteps, setWfSteps] = useState<string[]>(['']);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleFaceVerified = (e: any) => {
@@ -59,7 +38,7 @@ function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction
     };
     window.addEventListener('face-verified', handleFaceVerified);
     return () => window.removeEventListener('face-verified', handleFaceVerified);
-  }, [isRunning]); // Depend on isRunning so executeWorkflowSteps has the latest scope
+  }, [isRunning]);
 
   const fetchWorkflows = async () => {
     try {
@@ -111,10 +90,6 @@ function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction
     linkElement.click();
   };
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const importWorkflow = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -124,7 +99,6 @@ function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction
       try {
         const content = e.target?.result as string;
         const importedWf = JSON.parse(content);
-        // Ensure it has a unique ID to avoid overwrites
         importedWf.id = "imported_" + Date.now().toString(36);
         await handleSaveWorkflow(importedWf);
       } catch (err) {
@@ -132,7 +106,6 @@ function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction
       }
     };
     reader.readAsText(file);
-    // Reset input
     event.target.value = '';
   };
 
@@ -158,16 +131,13 @@ function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction
 
   const runWorkflow = async (wf: Workflow) => {
     if (!setFaceAuthAction) {
-      // No face auth wired — run directly
       executeWorkflowSteps(wf);
       return;
     }
     if (!faceRegistered) {
-      // Not yet registered — ask user to register their face first
       alert('Face authentication is required to run workflows.\n\nPlease click "Register Face" to set up your face ID first.');
       return;
     }
-    // Face registered — require verification before running
     setFaceAuthAction({ mode: 'verify', task: '', workflow: wf });
   };
 
@@ -178,67 +148,30 @@ function WorkflowsView({ handleRun, isRunning, faceRegistered, setFaceAuthAction
           <h1>Automated Workflows</h1>
           <p>Execute complex routines with a single click.</p>
         </div>
-        <div className="header-actions">
-          {setFaceAuthAction && (
-            <button
-              className="import-wf-btn"
-              onClick={() => setFaceAuthAction({ mode: 'register' })}
-              style={!faceRegistered ? { borderColor: '#f59e0b', color: '#f59e0b' } : {}}
-              title={!faceRegistered ? 'Register your face to enable workflow authentication' : 'Update registered face'}
-            >
-              {faceRegistered ? '✓ Re-register Face' : '⚠ Register Face'}
-            </button>
-          )}
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            style={{ display: 'none' }} 
-            accept=".json"
-            onChange={importWorkflow}
-          />
-          <button className="import-wf-btn" onClick={handleImportClick}>
-            <Upload size={18} /> Import
-          </button>
-          <button className="create-wf-btn" onClick={() => setIsModalOpen(true)}>
-            <Plus size={18} /> New Workflow
-          </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            {setFaceAuthAction && (
+                <button
+                className="import-wf-btn"
+                onClick={() => setFaceAuthAction({ mode: 'register' })}
+                style={!faceRegistered ? { borderColor: '#f59e0b', color: '#f59e0b' } : {}}
+                title={!faceRegistered ? 'Register your face to enable workflow authentication' : 'Update registered face'}
+                >
+                {faceRegistered ? '✓ Re-register Face' : '⚠ Register Face'}
+                </button>
+            )}
+            <ImportExportControls onImport={importWorkflow} onNewWorkflow={() => setIsModalOpen(true)} />
         </div>
       </header>
 
-      <div className="workflows-grid">
-        {workflows.map((wf) => (
-          <div key={wf.id} className={`workflow-card ${activeWorkflow === wf.id ? 'running' : ''}`}>
-            <div className="card-gradient" style={{ background: wf.color }} />
-            <div className="card-content">
-              <div className="card-top-actions">
-                 <h3>{wf.name}</h3>
-                 <button className="export-mini-btn" title="Export Workflow" onClick={() => exportWorkflow(wf)}>
-                    <Download size={14} />
-                 </button>
-              </div>
-              <p>{wf.description}</p>
-              <div className="steps-preview">
-                {wf.steps.map((step, i) => (
-                  <div key={i} className={`step-item ${activeWorkflow === wf.id && i === currentStep ? 'active' : ''} ${activeWorkflow === wf.id && i < currentStep ? 'done' : ''}`}>
-                    {activeWorkflow === wf.id && i < currentStep ? <CheckCircle2 size={14} color="#10b981" /> : (activeWorkflow === wf.id && i === currentStep ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />)}
-                    {step}
-                  </div>
-                ))}
-              </div>
-              <button 
-                className="run-btn" 
-                onClick={() => runWorkflow(wf)}
-                disabled={isRunning && activeWorkflow !== wf.id}
-              >
-                {activeWorkflow === wf.id ? <Loader2 className="animate-spin" /> : <Play size={18} fill="currentColor" />}
-                {activeWorkflow === wf.id ? 'Running...' : 'Run Routine'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      <WorkflowGrid
+        workflows={workflows}
+        activeWorkflow={activeWorkflow}
+        currentStep={currentStep}
+        isRunning={isRunning}
+        onExport={exportWorkflow}
+        onRun={runWorkflow}
+      />
 
-      {/* CREATE WORKFLOW MODAL */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="workflow-modal">
@@ -326,5 +259,3 @@ function ZapIcon({ size, color }: { size: number, color: string }) {
     </svg>
   );
 }
-
-export default WorkflowsView;
