@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="100%" height="100%">
+  <defs>
+    <radialGradient id="vignette-autoos" cx="50%" cy="50%" r="75%">
+      <stop offset="0%" stop-color="#121118" stop-opacity="0.9"/>
+      <stop offset="65%" stop-color="#09080E" stop-opacity="0.97"/>
+      <stop offset="100%" stop-color="#040407" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#C5A059"/>
+      <stop offset="100%" stop-color="#D4AF37"/>
+    </linearGradient>
+    <linearGradient id="crimson-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#C5A059"/>
+    </linearGradient>
+    <style>
+      .serif-title { font-family: 'Cinzel', 'Cormorant Garamond', 'Didot', 'Playfair Display', 'Baskerville', 'Georgia', serif; font-weight: 400; }
+      .serif-sub { font-family: 'Cormorant Garamond', 'Baskerville', 'Georgia', serif; font-style: italic; }
+      .mono-tech { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="420" fill="#040407"/>
+  <rect width="1200" height="420" fill="url(#vignette-autoos)"/>
+
+  <!-- Archival Framing -->
+  <rect x="24" y="24" width="1152" height="372" fill="none" stroke="#C5A059" stroke-width="0.8" stroke-opacity="0.4"/>
+  <rect x="28" y="28" width="1144" height="364" fill="none" stroke="#C5A059" stroke-width="0.5" stroke-dasharray="4,6" stroke-opacity="0.25"/>
+
+  <!-- Compass Rosettes & Corner Ticks -->
+  <g stroke="#C5A059" stroke-width="0.8" opacity="0.7">
+    <path d="M18 24 h18 M24 18 v18"/>
+    <path d="M1182 24 h-18 M1176 18 v18"/>
+    <path d="M18 396 h18 M24 390 v18"/>
+    <path d="M1182 396 h-18 M1176 390 v18"/>
+    <circle cx="24" cy="24" r="3.5" fill="none"/>
+    <circle cx="1176" cy="24" r="3.5" fill="none"/>
+    <circle cx="24" cy="396" r="3.5" fill="none"/>
+    <circle cx="1176" cy="396" r="3.5" fill="none"/>
+  </g>
+
+  <!-- Left Visual: Da Vinci OS Cybernetic Engine & Astrolabe -->
+  <g transform="translate(230, 210)" stroke="#C5A059" fill="none">
+    <!-- Concentric Celestial Orbits -->
+    <circle cx="0" cy="0" r="145" stroke-width="0.5" stroke-opacity="0.2" stroke-dasharray="3,5"/>
+    <circle cx="0" cy="0" r="120" stroke-width="0.6" stroke-opacity="0.35"/>
+    <circle cx="0" cy="0" r="95" stroke-width="0.7" stroke-opacity="0.45" stroke-dasharray="8,4"/>
+    <circle cx="0" cy="0" r="70" stroke-width="0.9" stroke-opacity="0.6"/>
+    <circle cx="0" cy="0" r="42" stroke-width="1.1" stroke-opacity="0.8"/>
+    <circle cx="0" cy="0" r="14" stroke-width="1.2" stroke="#38BDF8" fill="#121118"/>
+
+    <!-- Coordinate Axes -->
+    <line x1="-160" y1="0" x2="160" y2="0" stroke-width="0.5" stroke-opacity="0.35"/>
+    <line x1="0" y1="-160" x2="0" y2="160" stroke-width="0.5" stroke-opacity="0.35"/>
+    <line x1="-115" y1="-115" x2="115" y2="115" stroke-width="0.4" stroke-opacity="0.25" stroke-dasharray="2,4"/>
+    <line x1="-115" y1="115" x2="115" y2="-115" stroke-width="0.4" stroke-opacity="0.25" stroke-dasharray="2,4"/>
+
+    <!-- Calibrated Gear Teeth on Outer Orbit -->
+    <g stroke-width="1" stroke-opacity="0.5">
+      <line x1="0" y1="-120" x2="0" y2="-128"/>
+      <line x1="120" y1="0" x2="128" y2="0"/>
+      <line x1="0" y1="120" x2="0" y2="128"/>
+      <line x1="-120" y1="0" x2="-128" y2="0"/>
+      <line x1="85" y1="-85" x2="91" y2="-91"/>
+      <line x1="85" y1="85" x2="91" y2="91"/>
+      <line x1="-85" y1="85" x2="-91" y2="91"/>
+      <line x1="-85" y1="-85" x2="-91" y2="-91"/>
+    </g>
+
+    <!-- Triangular Trilateral Gate (Gateway, OS, Web) -->
+    <polygon points="0,-70 60.6,35 -60.6,35" stroke="#38BDF8" stroke-width="0.8" stroke-opacity="0.6"/>
+    <circle cx="0" cy="-70" r="4" fill="#38BDF8"/>
+    <circle cx="60.6" cy="35" r="4" fill="#C5A059"/>
+    <circle cx="-60.6" cy="35" r="4" fill="#E11D48"/>
+
+    <!-- Precision Mechanical Annotations -->
+    <text x="-165" y="-142" fill="#C5A059" opacity="0.6" font-size="9" class="mono-tech">FIG. I — KERNEL GROUNDING ENGINE</text>
+    <text x="-165" y="148" fill="#38BDF8" opacity="0.65" font-size="8" class="mono-tech">LAYER 0: WIN32 / UIA / VLM</text>
+    <text x="-165" y="163" fill="#E11D48" opacity="0.7" font-size="8" class="mono-tech">GUARD: CRYPTO HITL GATE</text>
+  </g>
+
+  <!-- Right Typography & Product Showcase -->
+  <g transform="translate(470, 0)">
+    <!-- Sub-heading Monogram -->
+    <text x="0" y="115" fill="#C5A059" font-size="11" letter-spacing="4" class="serif-title" opacity="0.9">
+      AUTONOMOUS DESKTOP OPERATING INTELLIGENCE
+    </text>
+
+    <!-- Main Title -->
+    <text x="0" y="180" fill="#FDFBF7" font-size="46" letter-spacing="9" class="serif-title">
+      AUTO·OS <tspan fill="#38BDF8" font-size="34">v2.0</tspan>
+    </text>
+
+    <!-- Separator Line with Central Brass Node -->
+    <g transform="translate(0, 205)" stroke="#C5A059" opacity="0.65">
+      <line x1="0" y1="0" x2="440" y2="0" stroke-width="0.8"/>
+      <circle cx="220" cy="0" r="3.5" fill="#C5A059"/>
+      <circle cx="110" cy="0" r="1.8" fill="#C5A059"/>
+      <circle cx="330" cy="0" r="1.8" fill="#C5A059"/>
+    </g>
+
+    <!-- Architectural Subtitle -->
+    <text x="0" y="240" fill="#C5BEB3" font-size="13" letter-spacing="2" class="serif-title" opacity="0.95">
+      HYBRID GROUNDING • ZERO-TRUST HITL • BROWSER-TO-DESKTOP BUS
+    </text>
+
+    <!-- Editorial Prose -->
+    <text x="0" y="272" fill="#8C857B" font-size="12.5" class="serif-sub">
+      Deterministic cross-platform automation uniting Playwright web agents with native Win32 accessibility trees.
+    </text>
+
+    <!-- Interactive Badges & Verification Tokens -->
+    <g transform="translate(0, 312)">
+      <!-- Badge 1: Dual Execution -->
+      <rect x="0" y="0" width="138" height="26" rx="2" fill="#101018" stroke="#38BDF8" stroke-width="0.7" stroke-opacity="0.6"/>
+      <text x="69" y="17" fill="#38BDF8" font-size="10" text-anchor="middle" class="mono-tech">UIA + PLAYWRIGHT</text>
+
+      <!-- Badge 2: HITL Safety -->
+      <rect x="150" y="0" width="144" height="26" rx="2" fill="#101018" stroke="#E11D48" stroke-width="0.7" stroke-opacity="0.6"/>
+      <text x="222" y="17" fill="#E11D48" font-size="10" text-anchor="middle" class="mono-tech">HMAC-SHA256 HITL</text>
+
+      <!-- Badge 3: Zero Window -->
+      <rect x="306" y="0" width="132" height="26" rx="2" fill="#101018" stroke="#C5A059" stroke-width="0.7" stroke-opacity="0.6"/>
+      <text x="372" y="17" fill="#C5A059" font-size="10" text-anchor="middle" class="mono-tech">CREATE_NO_WINDOW</text>
+    </g>
+
+    <!-- Codex Legend & Year -->
+    <text x="0" y="368" fill="#5C564E" font-size="9" letter-spacing="2.5" class="mono-tech">
+      OPUS AUTOMATIONIS • ANNO MMXXVI • OPEN SOURCE ARCHITECTURE
+    </text>
+  </g>
+</svg>

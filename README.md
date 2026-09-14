@@ -1,6 +1,6 @@
 <div align="center">
 
-![AutoOS System Banner](assets/web_systems_banner.svg)
+![AutoOS System Banner](assets/auto_os_banner.svg)
 
 # ⚡ AutoOS: The Autonomous Desktop Operating Intelligence
 ### *Bridging Web Automation, Native Desktop Manipulation & Zero-Trust HITL Governance*
@@ -14,7 +14,7 @@
 
 *AutoOS transforms standard personal computers into deterministic, autonomous agent workstations. By uniting headless browser automation (`browser-use`) and native operating system perception (`Win32/UIA Accessibility Tree + VLM Grounding`), AutoOS executes complex cross-platform workflows while enforcing military-grade Human-in-the-Loop safety boundaries.*
 
-[Features](#-core-capabilities) • [Architecture](#-system-architecture) • [Competitive Matrix](#-competitive-landscape) • [Quickstart](#-quickstart) • [Security](#-security--privacy-invariant)
+[Features](#-core-capabilities) • [Architecture](#-system-architecture) • [Competitive Matrix](#-competitive-landscape) • [Quickstart](#-quickstart) • [API Reference](#-gateway-api-reference) • [Security](#-security--privacy-invariant)
 
 </div>
 
@@ -105,6 +105,20 @@ flowchart TD
 ### 4. Rich Audit Trail & Session Replay
 - Every step is recorded in a persistent, tamper-evident `logs/audit_trail.jsonl` ledger.
 - Real-time terminal telemetry rendered with classical Atelier craftsmanship via `textualize/rich`.
+
+---
+
+## 🌐 Gateway API Reference
+
+AutoOS runs a high-speed FastAPI ASGI gateway on port `8765`:
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Heartbeat & subsystem diagnostic probe (<5ms response). |
+| `POST` | `/executions` | Dispatches task to LangGraph StateMachine with streaming updates. |
+| `POST` | `/executions/approve` | Validates signed HMAC approval token for gated actions. |
+| `GET` | `/system/status` | Real-time RAM, CPU, disk, battery, and network telemetry. |
+| `WS` | `/ws/stream` | Low-latency binary WebSocket for token streaming and UI state synchronization. |
 
 ---
 
