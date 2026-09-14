@@ -1,19 +1,16 @@
 """
-router.py — Routes the graph to the correct executor based on the planner's
-sub_category, category, confidence, and needs_hitl flag.
+router.py — Intelligently routes the agent execution graph based on planner signals,
+confidence bounds, and explicit Human-in-the-Loop (HITL) safety requirements.
 """
 from __future__ import annotations
 
-import logging
-
 from agent.state import AgentState
-
 from utils.logger import agent_logger as logger
 
-# Sub-categories that go to the browser executor
+# Sub-categories directed to browser automation
 _BROWSER_SUBS = {"web_search", "web_form", "media_playback", "gov_portal"}
 
-# Sub-categories that go to the OS executor
+# Sub-categories directed to local OS primitives
 _OS_SUBS = {
     "file_ops",
     "app_launch",
@@ -24,13 +21,12 @@ _OS_SUBS = {
     "diagnostics",
 }
 
-
 def router(state: AgentState) -> str:
     """
-    Decides the next node based on:
-      1. The fine-grained sub_category (preferred signal)
-      2. The top-level category as a fallback
-      3. Low confidence / needs_hitl → 'end' (HITL not wired yet, safe fail)
+    Evaluates state and determines the execution branch:
+      1. Dangerous operations requiring user consent -> 'hitl_gate'
+      2. Fine-grained sub-category (browser vs os)
+      3. Fallback category (reasoning, browser, os)
     """
     sub = state.get("sub_category", "unknown")
     category = state.get("next_action", "end")
@@ -38,18 +34,22 @@ def router(state: AgentState) -> str:
     needs_hitl = state.get("needs_hitl", False)
 
     logger.debug(
-        "Router: sub=%s category=%s confidence=%.2f hitl=%s",
+        "Router: sub=%s category=%s confidence=%.2f needs_hitl=%s",
         sub, category, confidence, needs_hitl,
     )
 
-    # Sub-category is the primary signal ─────────────────────────────────────
+    # If action requires explicit human verification and hasn't been approved yet
+    if needs_hitl and not state.get("approved", False):
+        return "hitl_gate"
+
+    # Sub-category primary dispatch
     if sub in _BROWSER_SUBS:
         return "browser_executor"
 
     if sub in _OS_SUBS:
         return "os_executor"
 
-    # Fallback: use top-level category ────────────────────────────────────────
+    # Fallback to category signal
     if category == "browser":
         return "browser_executor"
 
@@ -59,6 +59,6 @@ def router(state: AgentState) -> str:
     if category == "reasoning":
         return "reasoning_executor"
 
-    # Ambiguous / low confidence / unknown ────────────────────────────────────
-    logger.warning("Router could not route: sub=%s category=%s — ending", sub, category)
-    return "end"
+    # Ambiguous / Low Confidence
+    logger.info("Router defaulted to reasoning_executor for ambiguous input: sub=%s category=%s", sub, category)
+    return "reasoning_executor"
