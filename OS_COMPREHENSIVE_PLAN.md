@@ -1,7 +1,7 @@
-# AutoOS: Comprehensive OS Automation & Gateway Architecture
+# AutoOS v2.0: Comprehensive OS Automation & Gateway Architecture
 
 ## 1. Executive Summary
-AutoOS is a desktop-first automation platform designed to bridge the gap between web-based tasks and local operating system management. The core innovation is a **Unified Gateway** that interprets natural language user input and intelligently routes it to either a Browser Control module or a Desktop/OS Control module powered by **Agent-S**.
+AutoOS is a desktop-first automation platform designed to bridge the gap between web-based tasks and local operating system management. The core innovation is a **Unified Gateway** that interprets natural language user input and intelligently routes it to either a Browser Control module (`browser-use` / Playwright) or a Native OS Control module powered by **Win32/UIA Accessibility Inspection and VLM Visual Perception**.
 
 ---
 
@@ -9,56 +9,58 @@ AutoOS is a desktop-first automation platform designed to bridge the gap between
 The Gateway acts as the "brain" of the application, serving as the single entry point for all user interactions.
 
 ### 2.1 Routing Logic
-When a user provides input (via text or voice), the Gateway performs the following:
-1.  **Intent Classification**: Uses a Large Language Model (LLM) to determine the nature of the request.
-2.  **Request Type Decision**:
-    *   **Browser Request**: Tasks requiring web navigation, data scraping, or online form filling (e.g., "Book a flight," "Check my email").
-    *   **OS Request**: Tasks involving the local file system, desktop applications, system settings, or troubleshooting (e.g., "Find my last download," "Clean up my disk space").
-3.  **Hand-off**:
-    *   **To Browser Control**: Routes to `browser-use` (Playwright-based agent).
-    *   **To OS Control**: Routes to the **Agent-S** execution layer.
+When a user provides input (via text, hotkey, or voice), the Gateway performs the following:
+1. **Intent Classification & Risk Scoring**: Analyzes user intent, checks risk boundaries (`SAFE`, `CAUTION`, `DANGEROUS`, `BLOCKED`), and sets `needs_hitl` if state-altering operations are detected.
+2. **Request Type Decision**:
+   - **Browser Request**: Tasks requiring web navigation, data extraction, or online form filling (e.g., "Check latest flight prices," "Extract table from URL").
+   - **OS Request**: Tasks involving local file systems, native desktop software, system diagnostics, or hardware introspection.
+   - **Cognitive Request**: Pure knowledge, math, and analytical inquiries.
+3. **Hand-off & Execution**:
+   - **HITL Check**: If the task is classified as `DANGEROUS` (deleting files, terminating processes, modifying settings), the `hitl_gate` intercepts execution, issues a signed HMAC-SHA256 challenge, and waits for user confirmation in the HUD.
+   - **To Browser Control**: Routes to `browser_executor` via Playwright.
+   - **To OS Control**: Routes to `os_executor` via native Win32/psutil/pygetwindow primitives.
+   - **To Reasoning Core**: Routes to `reasoning_executor`.
+4. **Telemetry & Memory Ingestion**:
+   - All executions stream to `logger_node` (recording audit trail to `logs/audit_trail.jsonl` and rendering high-craft Rich panels).
+   - State and context persist into `memory_consolidator` and SQLite WAL storage.
 
 ---
 
-## 3. Agent-S Integration (OS Control Layer)
-Agent-S is the primary driver for all complex OS-level interactions. Unlike traditional automation, Agent-S utilizes visual perception to "see" the desktop and interact with it like a human.
+## 3. OS Control Layer (Native Primitives & Grounding)
+Unlike traditional brittle automation that relies entirely on full-screen screenshots, AutoOS utilizes a **Hybrid Grounding Architecture**:
 
 ### 3.1 Core OS Capabilities
--   **Visual Perception**: Interpreting GUI elements in Windows Explorer, Settings, and third-party desktop apps.
--   **System Diagnostics**: Reading error messages (BSODs, app crashes) and explaining them in plain English.
--   **Multi-Step GUI Tasks**: Performing complex sequences such as "Open Word, paste this text, and save it to my 'Reports' folder."
+- **Direct Application Management**: Non-blocking window focus, instance de-duplication, and launching via native Win32/UIA APIs without spawning visible terminal windows (`CREATE_NO_WINDOW = 0x08000000`).
+- **Context-Aware File Operations**: Automatic path resolution for OneDrive, Desktop, and user libraries with real-time Explorer selection.
+- **Safe Mathematical Computation**: AST-grounded arithmetic compiler eliminating `eval()` vulnerabilities.
+- **System Health Diagnostics**: Socket-level network latency telemetry, disk usage analysis, battery drain metrics, and peripheral introspection.
 
 ### 3.2 Key OS Feature Portfolio
--   **Smart File Management**: Searching for files by context, date, or visual location.
--   **Download Recovery**: Visually scanning browser history and download folders to locate "lost" files.
--   **Storage Health**: Proactive monitoring and "Cleanup Assistant" routines.
--   **Visual Diagnostics**: Analyzing screen state to troubleshoot system issues.
+- **Smart Window Focus**: Detects existing application instances via `pygetwindow` and activates them instantly instead of launching redundant processes.
+- **Hardware Telemetry**: Proactive monitoring of battery, network latency, and disk thresholds.
+- **Local Sovereignty**: All file reads, screen frames, and system metrics remain strictly on the local machine.
 
 ---
 
-## 4. Main Desktop Application (Software)
-The main software is built as an Electron-based desktop application that encapsulates the Gateway.
+## 4. Main Desktop Application Architecture
+The desktop client is delivered as an Electron + React application encapsulating the Gateway.
 
-### 4.1 Technical Architecture
--   **Frontend (Electron + React)**: Provides the user interface, including the voice input trigger and real-time execution feedback.
--   **Backend (FastAPI)**: Hosts the Gateway API and the LangGraph agent state.
--   **Agent Layer (LangGraph)**:
-    *   **Planner Node**: Breaks down the user's high-level request into actionable steps.
-    *   **Router Node**: The functional Gateway that decides between Browser and OS tools.
-    *   **Executor Node**: Invokes Agent-S for OS tasks or `browser-use` for web tasks.
+### 4.1 Technical Stack
+- **Frontend (Electron + React + Vite + Tailwind CSS)**: Provides the tactile Atelier interface, real-time WebSocket execution streams, and HITL confirmation modals.
+- **Backend (FastAPI Gateway)**: Unified ASGI server running on port 8765, interfacing with LangGraph and local system buses.
+- **Agent Layer (LangGraph State Machine)**:
+  - `planner`: Breaks down user queries into sub-categories and confidence metrics.
+  - `router`: Dynamic conditional dispatcher evaluating risk and category.
+  - `hitl_gate`: Cryptographic gate enforcing human consent on destructive tasks.
+  - `browser_executor`: Playwright web automation.
+  - `os_executor`: Native desktop automation.
+  - `logger_node`: Telemetry, Rich terminal logging, and persistent JSON-L audit trail.
+  - `memory_consolidator`: Epistemic memory updating contextual history.
 
 ---
 
-## 5. Summary of the Integrated Plan
-The project follows a modular, parallel development track:
--   **Phase 1 (Setup)**: Establish the FastAPI/Electron foundation and create the Python 3.12 virtual environment.
--   **Phase 2 (Core Development)**:
-    -   **Web Track**: Perfecting `browser-use` for reliable web navigation.
-    -   **OS Track**: Implementing Agent-S modules for file system and diagnostic tasks.
-    -   **Gateway Track**: Developing the LLM-based router to handle classification between the two.
--   **Phase 3 (Integration)**: Merging the tracks into the unified "AutoOS" interface with full voice-in/voice-out support.
-
-## 6. Rules for OS Development
--   **Zero Jargon**: All Agent-S outputs must be translated into plain English for non-technical users.
--   **Local First**: No system data or file contents should leave the local environment.
--   **Human-in-the-Loop (HITL)**: Any destructive OS action (like deleting files) requires explicit user confirmation via the Gateway.
+## 5. Security & Engineering Invariants
+- **CREATE_NO_WINDOW Mandate**: Every `subprocess.Popen` or `subprocess.run` on Windows MUST include `creationflags=0x08000000`. Bare subprocess calls that flash `cmd.exe` windows are strictly forbidden.
+- **Zero `eval()` Policy**: User input and mathematical expressions are never evaluated using Python's `eval()`. Only verified AST operator parsers are permitted.
+- **Cryptographic Gate**: Destructive OS actions require HMAC-SHA256 signed approval tokens.
+- **Zero Jargon**: User-facing responses are translated into plain, actionable language.
